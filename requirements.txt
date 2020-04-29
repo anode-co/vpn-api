@@ -3,3 +3,4 @@ django-rest-framework
 django-cors-headers
 drf_yasg
 djangorestframework-api-key
+mysqlclient
