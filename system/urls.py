@@ -22,7 +22,7 @@ from rest_framework import permissions
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('0.1/vpn/', include('vpn.urls_api_0_1')),
+    path('api/0.1/vpn/', include('vpn.urls_api_0_1')),
 ]
 
 schema_view = get_schema_view(
