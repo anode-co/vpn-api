@@ -27,7 +27,10 @@ SECRET_KEY = '-$maf+wsl8)c@1hs%i1=9vn^2qg@am^41dfd%=5!v@+89-gq9&'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'vpn.anode.co',
+]
 
 
 # Application definition
