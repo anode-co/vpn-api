@@ -10,8 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
-# API test client key: hthiP3Gx.TLJRcZGpsHh8ImjtBCjpB7soD87qsaDb
-
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -158,6 +156,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         "rest_framework_api_key.permissions.HasAPIKey",
     ]
+}
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Api-Key': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    }
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
