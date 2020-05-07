@@ -154,7 +154,8 @@ AUTH_USER_MODEL = 'common.User'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        "rest_framework_api_key.permissions.HasAPIKey",
+        # "rest_framework_api_key.permissions.HasAPIKey",
+        "rest_framework.permissions.AllowAny",
     ]
 }
 
