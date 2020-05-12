@@ -32,6 +32,8 @@ class VpnClientEvent(models.Model):
     ip4_address = models.CharField(max_length=15, null=True, blank=True)
     ip6_address = models.CharField(max_length=50, null=True, blank=True)
     message = models.CharField(max_length=100)
+    previous_android_log = models.TextField(null=True, blank=True)
+    new_android_log = models.TextField(null=True, blank=True)
     debugging_messages = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
