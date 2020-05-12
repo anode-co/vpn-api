@@ -22,5 +22,7 @@ class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSeri
             'ip4_address',
             'ip6_address',
             'message',
-            'debugging_messages'
+            'previous_android_log',
+            'new_android_log',
+            'debugging_messages',
         ]
