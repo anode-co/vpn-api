@@ -156,7 +156,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         # "rest_framework_api_key.permissions.HasAPIKey",
         "rest_framework.permissions.AllowAny",
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100,
+    # 'EXCEPTION_HANDLER': 'rest_framework_friendly_errors.handlers.friendly_exception_handler',
 }
 
 SWAGGER_SETTINGS = {

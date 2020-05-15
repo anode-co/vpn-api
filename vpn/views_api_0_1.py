@@ -1,10 +1,26 @@
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ViewSet
+from rest_framework.mixins import ListModelMixin
+from rest_framework_api_key.permissions import HasAPIKey
+from rest_framework.decorators import action, permission_classes  # other imports elided
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework import status
 from ipaddress import ip_address
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from .models import (
+    ClientSoftwareVersion,
+    CjdnsVpnServerPeeringLine,
+    CjdnsVpnServer,
+    NetworkExitRange,
+)
 from .serializers_0_1 import (
     VpnClientEventSerializer,
+    ClientSoftwareVersionSerializer,
+    CjdnsVPNServerSerializer
 )
 
 
@@ -15,6 +31,17 @@ class CsrfExemptMixin(object):
     def dispatch(self, *args, **kwargs):
         """Dispatch the object."""
         return super(CsrfExemptMixin, self).dispatch(*args, **kwargs)
+
+
+class PermissionsPerMethodMixin(object):
+    """Give permissions per method."""
+
+    def get_permissions(self):
+        """Allows overriding default permissions with @permission_classes."""
+        view = getattr(self, self.action)
+        if hasattr(view, 'permission_classes'):
+            return [permission_class() for permission_class in view.permission_classes]
+        return super().get_permissions()
 
 
 class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
@@ -50,4 +77,106 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({})
+            response = {
+                'status': 'success',
+                'detail': 'event logged',
+            }
+            return Response(response)
+
+
+class ClientSoftwareVersionRestApiView(ModelViewSet):
+    """Client Software Version."""
+
+    queryset = ClientSoftwareVersion.objects.filter(is_active=True)
+    serializer_class = ClientSoftwareVersionSerializer
+
+    def get_latest_version(self, request, client_os):
+        """Get the latest client OS version data."""
+        software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
+        if software_version is None:
+            raise Http404
+        serializer = self.get_serializer(software_version)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    @permission_classes((HasAPIKey,))
+    def add_new_version(self, request, client_os):
+        """Add a version."""
+        # TODO: Require API Key
+        request.data['client_os'] = client_os
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        response = {
+            'status': 'success',
+            'detail': 'version added for {}'.format(client_os)
+        }
+        return Response(response, status.HTTP_201_CREATED)
+
+
+class CjdnsVpnServerRestApiView(ListModelMixin, ViewSet):
+    """Cjdns VPN Servers."""
+
+    def list(self, request):
+        """List all active VPN Servers."""
+        vpn_servers = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+        vpn_server_lookup = dict([(vpn_server.pk, vpn_server) for vpn_server in vpn_servers])
+
+        network_exit_ranges_qs = NetworkExitRange.objects.select_related('cjdns_vpn_network_settings').filter(cjdns_vpn_network_settings__cjdns_vpn_server__in=vpn_servers)
+        for network_exit_range in network_exit_ranges_qs:
+            vpn_server = vpn_server_lookup[network_exit_range.cjdns_vpn_network_settings.cjdns_vpn_server_id]
+            if vpn_server._network_settings is None:
+                vpn_server._network_settings = network_exit_range.cjdns_vpn_network_settings
+                vpn_server._network_settings._nat_exit_ranges = []
+                vpn_server._network_settings._client_allocation_ranges = []
+            if network_exit_range.type == NetworkExitRange.TYPE_NAT_EXIT:
+                vpn_server._network_settings._nat_exit_ranges.append(network_exit_range)
+            elif network_exit_range.type == NetworkExitRange.TYPE_CLIENT_ALLOCATION:
+                vpn_server._network_settings._client_allocation_ranges.append(network_exit_range)
+
+        peering_lines_qs = CjdnsVpnServerPeeringLine.objects.filter(cjdns_vpn_server__in=vpn_servers)
+        for peering_line in peering_lines_qs:
+            if vpn_server_lookup[peering_line.cjdns_vpn_server_id]._peering_lines is None:
+                vpn_server_lookup[peering_line.cjdns_vpn_server_id]._peering_lines = []
+            vpn_server_lookup[peering_line.cjdns_vpn_server_id]._peering_lines.append(peering_line)
+
+        paginator = LimitOffsetPagination()
+        page = paginator.paginate_queryset(vpn_servers, request)
+        if page is not None:
+            serialized_vpn_servers = CjdnsVPNServerSerializer(page, many=True)
+            return paginator.get_paginated_response(serialized_vpn_servers.data)
+        else:
+            serializer = CjdnsVPNServerSerializer(vpn_servers, many=True)
+            return serializer(serializer.data)
+
+    def list_servers(self, request):
+        """List all active VPN Servers."""
+        return self.list(request)
+
+    def inspect_server(self, request, server_public_key):
+        """Retrieve a Cjdns VPN Server from the server's public_key."""
+        # TODO: Paginate
+        vpn_server = get_object_or_404(CjdnsVpnServer, is_active=True, is_approved=True, public_key=server_public_key)
+        serializer = CjdnsVPNServerSerializer(vpn_server)
+        return Response(serializer.data)
+
+    def request_client_authorization(self, request, server_public_key, client_public_key):
+        """Request a cjdns VPN server to authorize a client public key."""
+        vpn_server = get_object_or_404(CjdnsVpnServer, is_active=True, is_approved=True, public_key=server_public_key)
+        # TODO: run a connect to an API on the VPN server to authorize the client public key
+        response = {
+            'status': 'success',
+            'detail': 'public_key "{}" has been authorized.'.format(client_public_key)
+        }
+        return Response(response)
+
+    @action(detail=False, methods=['post'])
+    @permission_classes((HasAPIKey,))
+    def add_server(self, request):
+        """Retrieve a Cjdns VPN Server from the server's public_key."""
+        # TODO: require API Key
+        serializer = CjdnsVPNServerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vpn_server = serializer.save()
+        vpn_server.send_new_server_email_to_admin(vpn_server)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
