@@ -161,7 +161,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 100,
     # 'EXCEPTION_HANDLER': 'rest_framework_friendly_errors.handlers.friendly_exception_handler',
 }
-
+'''
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Api-Key': {
@@ -171,6 +171,7 @@ SWAGGER_SETTINGS = {
         }
     }
 }
+'''
 
 CORS_ORIGIN_ALLOW_ALL = True
 
