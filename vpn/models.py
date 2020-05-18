@@ -13,6 +13,9 @@ class VpnClientEvent(models.Model):
     ERROR_CJDNS_CRASH = "cjdns_crash"
     ERROR_VPN_CLIEN_CONNECTED = "connection"
     ERROR_VPN_CLIENT_DISCONNECTED = "disconnection"
+    ERROR_CJDROUTE = "cjdroute"
+    ERROR_CJDNS_SOCKET = "cjdns_socket"
+    ERROR_VPN_SERVICE = "vpn_service"
     ERROR_OTHER = "other"
 
     ERROR_CHOICES = [
@@ -22,6 +25,9 @@ class VpnClientEvent(models.Model):
         (ERROR_CJDNS_CRASH, _('CJDNS crashed')),
         (ERROR_VPN_CLIEN_CONNECTED, _('VPN client connected')),
         (ERROR_VPN_CLIENT_DISCONNECTED, _('VPN client disconnected')),
+        (ERROR_CJDROUTE, _('Cjdroute problem')),
+        (ERROR_CJDNS_SOCKET, _('Cjdns socket error')),
+        (ERROR_VPN_SERVICE, _('VPN service problem')),
         (ERROR_OTHER, _('Other reason')),
     ]
 
