@@ -61,6 +61,7 @@ class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
         model = ClientSoftwareVersion
         fields = [
             'client_os',
+            'client_cpu_architecture',
             'client_software_version',
             'major_number',
             'minor_number',
@@ -71,6 +72,7 @@ class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
         ]
         example = {
             'client_os': 'android',
+            'client_cpu_architecture': 'i686',
             'client_software_version': 'android-anode-0.9.11a',
             'major_number': 0,
             'minor_number': 1,

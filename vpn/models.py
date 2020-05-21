@@ -69,7 +69,20 @@ class ClientSoftwareVersion(models.Model):
         (PLATFORM_LINUX, _("Linux")),
     ]
 
+    CPU_ARCH_I686 = 'i686'
+    CPU_ARCH_AARCH64 = 'aarch64'
+    CPU_ARCH_ARMV7A = 'armv7a'
+    CPU_ARCH_X86_64 = 'X86_64'
+
+    CPU_ARCHITECTURES = [
+        (CPU_ARCH_I686, 'i686'),
+        (CPU_ARCH_AARCH64, 'aarch64'),
+        (CPU_ARCH_ARMV7A, 'armv7a'),
+        (CPU_ARCH_X86_64, 'X86_64'),
+    ]
+
     client_os = models.CharField(max_length=20, choices=PLATFORMS, blank=True)
+    client_cpu_architecture = models.CharField(max_length=20, choices=CPU_ARCHITECTURES, blank=True)
     name = models.CharField(max_length=64, null=True, blank=True)
     slug = models.SlugField(max_length=64, null=True, blank=True)
     major_number = models.PositiveSmallIntegerField()
