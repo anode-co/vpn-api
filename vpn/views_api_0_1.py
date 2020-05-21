@@ -125,7 +125,9 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
 
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
     serializer_class = CjdnsVPNServerSerializer
+    pagination_class = LimitOffsetPagination
 
+    '''
     def list(self, request):
         """List all active VPN Servers."""
         vpn_servers = self.get_queryset()
@@ -148,6 +150,7 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
         vpn_server = serializer.save()
         vpn_server.send_new_server_email_to_admin(vpn_server)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    '''
 
 
 class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):

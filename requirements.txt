@@ -3,6 +3,6 @@ django-rest-framework
 django-cors-headers
 drf_yasg
 djangorestframework-api-key
-rest-framework-friendly-errors
+drf-friendly-errors
 drf-yasg-examples
 mysqlclient
