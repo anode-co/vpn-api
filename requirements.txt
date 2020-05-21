@@ -4,4 +4,5 @@ django-cors-headers
 drf_yasg
 djangorestframework-api-key
 rest_framework_friendly_errors
+drf-yasg-examples
 mysqlclient
