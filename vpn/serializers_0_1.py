@@ -34,6 +34,22 @@ class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSeri
             'new_android_log',
             'debugging_messages',
         ]
+        example = {
+            'public_key': 'lbqr0rzyc2tuysw3w8gfr95u68kujzlq7zht5hyf452u8yshr120.k',
+            'error': 'connection_failed',
+            'client_software_version': 'android-anode-0.9.11a',
+            'client_os': 'Android',
+            'client_os_version': '9.1',
+            'cpu_utilization_percent': 34,
+            'available_memory_bytes': 340243234,
+            'local_timestamp': '2017-07-21T17:32:28Z',
+            'ip4_address': '91.207.175.41',
+            'ip6_address': 'fc29:c42b:fa32:b411:71c7:cf70:98c6:9427',
+            'message': 'cjdns route failed unexpectedly',
+            'previous_android_log': '1588074618 INFO RandomSeed.c:42 Attempting...',
+            'new_android_log': '1588074618 INFO RandomSeed.c:42 Attempting...',
+            'debugging_messages': '1588074618 INFO RandomSeed.c:42 Attempting...',
+        }
 
 
 class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
@@ -53,6 +69,16 @@ class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
             'certificate_url',
             'release_datetime'
         ]
+        example = {
+            'client_os': 'android',
+            'client_software_version': 'android-anode-0.9.11a',
+            'major_number': 0,
+            'minor_number': 1,
+            'revision_number': '11a',
+            'binary_download_url': 'https://anode.co/downloads/android-anode-0.9.11a.apk',
+            'certificate_url': 'https://anode.co/downloads/certificates/android-anode-0.9.11a.pem',
+            'release_datetime': '2017-07-21T17:32:28Z'
+        }
 
 
 class NetworkExitRangeSerialier(serializers.ModelSerializer):
@@ -66,6 +92,10 @@ class NetworkExitRangeSerialier(serializers.ModelSerializer):
             'min',
             'max'
         ]
+        example = {
+            'min': '10.0.0.1',
+            'max': '10.0.0.29',
+        }
 
 
 class CjdnsVpnServerPeeringLineSerializer(serializers.ModelSerializer):
@@ -80,6 +110,11 @@ class CjdnsVpnServerPeeringLineSerializer(serializers.ModelSerializer):
             'login',
             'password'
         ]
+        example = {
+            'name': 'Stretch Armstrong',
+            'login': 'my-cjdns-username',
+            'password': 'skZ6UtW5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB.k'
+        }
 
 
 class CjdnsVpnNetworkSettingsSerializer(serializers.ModelSerializer):
@@ -98,6 +133,10 @@ class CjdnsVpnNetworkSettingsSerializer(serializers.ModelSerializer):
             'nat_exit_ranges',
             'client_allocation_ranges'
         ]
+        example = {
+            'uses_nat': True,
+            'per_client_allocation_size': '/0',
+        }
 
 
 class CjdnsVPNServerSerializer(serializers.ModelSerializer):
@@ -119,6 +158,13 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
             'online_since_datetime',
             'last_seen_datetime'
         ]
+        example = {
+            'name': 'Kenny G',
+            'public_key': 'lbqr0rzyc2tuysw3w8gfr95u68kujzlq7zht5hyf452u8yshr120',
+            'bandwidth_bps': 10485760,
+            'online_since_datetime': "2017-07-21T17:32:28Z",
+            'last_seen_datetime': "2017-07-21T17:32:28Z"
+        }
 
     def create(self, validated_data):
         """Create a new cjdns VPN Server."""
@@ -162,3 +208,10 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
         vpn_server._network_settings = network_settings
 
         return vpn_server
+
+
+class GenericResponseSerializer(serializers.Serializer):
+    """Serializer a generic response."""
+
+    status = serializers.CharField()
+    message = serializers.CharField()

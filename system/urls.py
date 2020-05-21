@@ -22,14 +22,14 @@ from rest_framework import permissions
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/0.1/vpn/', include('vpn.urls_api_0_1')),
-    path('api/0.2/vpn/', include('vpn.urls_api_0_1')),
+    path('api/0.1/vpn/', include('vpn.urls_api_0_1', namespace='v0.1')),
+    path('api/0.2/vpn/', include('vpn.urls_api_0_2', namespace='v0.2')),
 ]
 
 schema_view = get_schema_view(
     openapi.Info(
         title="Anode VPN API",
-        default_version="v0.1",
+        default_version="v0.2",
         description="In-development API for Anode VPN clients",
         terms_of_service="",
         contact=openapi.Contact(email="adonis@anode.co"),

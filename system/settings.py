@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_api_key',
     'drf_yasg',
+    'drf_yasg_examples',
     'common',
     'vpn',
 ]
@@ -172,6 +173,10 @@ SWAGGER_SETTINGS = {
     }
 }
 '''
+
+SWAGGER_SETTINGS = {
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg_examples.SwaggerAutoSchema',
+}
 
 CORS_ORIGIN_ALLOW_ALL = True
 

@@ -1,5 +1,6 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.viewsets import ViewSet
+from rest_framework.generics import GenericAPIView
 from rest_framework.mixins import ListModelMixin
 from rest_framework_api_key.permissions import HasAPIKey
 from rest_framework.decorators import action, permission_classes  # other imports elided
@@ -20,8 +21,10 @@ from .models import (
 from .serializers_0_1 import (
     VpnClientEventSerializer,
     ClientSoftwareVersionSerializer,
-    CjdnsVPNServerSerializer
+    CjdnsVPNServerSerializer,
+    GenericResponseSerializer
 )
+from drf_yasg.utils import swagger_auto_schema
 
 
 class CsrfExemptMixin(object):
@@ -63,6 +66,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         """Override the queryset."""
         return None
 
+    @swagger_auto_schema(responses={400: 'Invalid request'})
     def add_loggable_event(self, request):
         """Save an event that happened on a VPN API client such as crashes or routing problems."""
         ip = None
@@ -84,13 +88,14 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
             return Response(response)
 
 
-class ClientSoftwareVersionRestApiView(ModelViewSet):
+class ClientSoftwareVersionRestApiView(GenericAPIView):
     """Client Software Version."""
 
     queryset = ClientSoftwareVersion.objects.filter(is_active=True)
     serializer_class = ClientSoftwareVersionSerializer
 
-    def get_latest_version(self, request, client_os):
+    @swagger_auto_schema(responses={404: 'client_os not found'})
+    def get(self, request, client_os):
         """Get the latest client OS version data."""
         software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
         if software_version is None:
@@ -99,8 +104,9 @@ class ClientSoftwareVersionRestApiView(ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
+    @swagger_auto_schema(responses={400: 'Invalid request'})
     @permission_classes((HasAPIKey,))
-    def add_new_version(self, request, client_os):
+    def post(self, request, client_os):
         """Add a version."""
         # TODO: Require API Key
         request.data['client_os'] = client_os
@@ -114,6 +120,56 @@ class ClientSoftwareVersionRestApiView(ModelViewSet):
         return Response(response, status.HTTP_201_CREATED)
 
 
+class CjdnsVpnServerRestApiView(ModelViewSet):
+    """Cjdns VPN Servers."""
+
+    queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+    serializer_class = CjdnsVPNServerSerializer
+
+    def list(self, request):
+        """List all active VPN Servers."""
+        vpn_servers = self.get_queryset()
+        serializer = self.get_serializer(vpn_servers, many=True)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(responses={404: 'Server public key not found'})
+    def retrieve(self, request, server_public_key):
+        """Retrieve a Cjdns VPN Server from the server's public_key."""
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
+        serializer = self.get_serializer(vpn_server)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(responses={400: 'Invalid request'})
+    @permission_classes((HasAPIKey,))
+    def create(self, request):
+        """Retrieve a Cjdns VPN Server from the server's public_key."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vpn_server = serializer.save()
+        vpn_server.send_new_server_email_to_admin(vpn_server)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):
+    """Authorize a Client public key."""
+
+    queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+    serializer = GenericResponseSerializer
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
+    def get(self, request, server_public_key, client_public_key):
+        """Request a cjdns VPN server to authorize a client public key."""
+        vpn_server = get_object_or_404(self.get_queryset, public_key=server_public_key)
+        # TODO: run a connect to an API on the VPN server to authorize the client public key
+        response = {
+            'status': 'success',
+            'detail': 'public_key "{}" has been authorized.'.format(client_public_key)
+        }
+        serializer = self.get_serializer(data=response)
+        return Response(serializer.data)
+
+
+'''
 class CjdnsVpnServerRestApiView(ListModelMixin, ViewSet):
     """Cjdns VPN Servers."""
 
@@ -180,3 +236,4 @@ class CjdnsVpnServerRestApiView(ListModelMixin, ViewSet):
         vpn_server = serializer.save()
         vpn_server.send_new_server_email_to_admin(vpn_server)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+'''
