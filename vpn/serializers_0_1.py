@@ -155,6 +155,8 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
             'name',
             'public_key',
             'bandwidth_bps',
+            'region',
+            'country_code',
             'network_settings',
             'peering_lines',
             'online_since_datetime',
