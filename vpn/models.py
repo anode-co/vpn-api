@@ -381,8 +381,8 @@ class CjdnsVpnServer(models.Model):
     is_approved = models.BooleanField(default=False)
     online_since_datetime = models.DateTimeField(auto_now_add=True, blank=True)
     last_seen_datetime = models.DateTimeField(auto_now=True, blank=True)
-    region = models.CharFielf(max_length=200, null=True, blank=True)
-    country = models.CharField(max_length=2, choices=COUNTRIES, null=True, blank=True)
+    region = models.CharField(max_length=200, null=True, blank=True)
+    country_code = models.CharField(max_length=2, choices=COUNTRIES, null=True, blank=True)
 
     _network_settings = None
 
