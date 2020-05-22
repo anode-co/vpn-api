@@ -1,3 +1,4 @@
+import json
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.viewsets import ViewSet
 from rest_framework.generics import GenericAPIView
@@ -126,6 +127,17 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
     serializer_class = CjdnsVPNServerSerializer
     pagination_class = LimitOffsetPagination
+
+    @swagger_auto_schema(responses={400: 'Invalid request'})
+    # @permission_classes((HasAPIKey,))
+    def create(self, request):
+        """Retrieve a Cjdns VPN Server from the server's public_key."""
+        print(json.dumps(request.data, indent=4))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vpn_server = serializer.save()
+        vpn_server.send_new_server_email_to_admin(vpn_server)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     '''
     def list(self, request):

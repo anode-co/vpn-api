@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
 from django.db.models.signals import pre_save
+from django.core.validators import MinValueValidator 
 
 
 class VpnClientEvent(models.Model):
@@ -376,7 +377,7 @@ class CjdnsVpnServer(models.Model):
 
     name = models.CharField(max_length=64)
     public_key = models.CharField(max_length=64)
-    bandwidth_bps = models.PositiveIntegerField(null=True, blank=True)
+    bandwidth_bps = models.BigIntegerField(validators=[MinValueValidator(1)], null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_approved = models.BooleanField(default=False)
     online_since_datetime = models.DateTimeField(auto_now_add=True, blank=True)
