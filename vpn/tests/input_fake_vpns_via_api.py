@@ -274,6 +274,7 @@ class FakeVpnServer:
         self.country_code = self.get_country_code()
         self.region = self.get_region()
         self.network_settings = self.get_network_settings()
+        self.peering_lines = self.get_peering_lines();
 
     def to_json(self):
         """Output as JSON."""
@@ -283,7 +284,8 @@ class FakeVpnServer:
             'bandwidth_bps': self.bandwidth_bps,
             'country_code': self.country_code,
             'region': self.region,
-            'network_settings': self.network_settings
+            'network_settings': self.network_settings,
+            'peering_lines': self.peering_lines
         }
         return output
 
@@ -376,7 +378,6 @@ class FakeVpnServer:
         network_settings['peer_client_allocation_size'] = '/{}'.format(random.randint(0, 255))
         network_settings['nat_exit_ranges'] = []
         network_settings['client_allocation_ranges'] = []
-        network_settings['peering_lines'] = []
         num_allocation_ranges = self.get_weighted_count(1, 5)
         for i in range(1, num_allocation_ranges + 1):
             ip_range = self.get_ip_range()
@@ -386,10 +387,15 @@ class FakeVpnServer:
             for i in range(1, num_exit_ranges):
                 ip_range = self.get_ip_range()
                 network_settings['nat_exit_ranges'].append(ip_range)
+        return network_settings
+
+    def get_peering_lines(self):
+        """Create fake peering lines."""
+        peering_lines = []
         num_peering_lines = self.get_weighted_count(0, 5)
         for i in range(0, num_peering_lines):
-            network_settings['peering_lines'].append(self.get_peering_line())
-        return network_settings
+            peering_lines.append(self.get_peering_line())
+        return peering_lines
 
 
 def main():
@@ -400,6 +406,7 @@ def main():
         vpn = FakeVpnServer(name)
         vpns.append(vpn)
         json_vpn = vpn.to_json()
+        print(json.dumps(json_vpn, indent=4))
         result = requests.post('https://vpn.anode.co/api/0.2/vpn/servers/', json=json_vpn)
         print(result.status_code)
         print(result.text)

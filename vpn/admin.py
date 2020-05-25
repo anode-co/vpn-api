@@ -15,7 +15,6 @@ class VpnClientEventAdmin(admin.ModelAdmin):
     search_fields = ('error', 'public_key', 'client_os', 'debugging_messages')
 
 
-@admin.register(CjdnsVpnServer)
 class CjdnsVpnServerAdmin(admin.ModelAdmin):
     """Admin represtation of CjdnsVpnServer."""
 
@@ -23,3 +22,13 @@ class CjdnsVpnServerAdmin(admin.ModelAdmin):
     ordering = ('is_active', 'is_approved', 'last_seen_datetime', 'online_since_datetime', 'name', 'public_key')
     list_filter = ('is_active', 'is_approved', 'online_since_datetime', 'last_seen_datetime')
     search_fields = ('public_key', 'name')
+    actions = ['approve_vpns', ]
+
+    def approve_vpns(self, request, queryset):
+        """Approve selected vpns."""
+        count = queryset.update(is_approved=True)
+        self.message_user(request, '{} vpns approved.'.format(count))
+    approve_vpns.short_description = "Approve VPNs"
+
+
+admin.site.register(CjdnsVpnServer, CjdnsVpnServerAdmin)
