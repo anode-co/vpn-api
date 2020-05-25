@@ -98,6 +98,10 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
     @swagger_auto_schema(responses={404: 'client_os not found'})
     def get(self, request, client_os):
         """Get the latest client OS version data."""
+        print("request:")
+        print(request)
+        print(request.is_secure())
+        print(request.headers)
         software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
         if software_version is None:
             raise Http404
