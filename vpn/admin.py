@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     VpnClientEvent,
-    CjdnsVpnServer
+    CjdnsVpnServer,
+    ClientSoftwareVersion
 )
 
 
@@ -32,3 +33,13 @@ class CjdnsVpnServerAdmin(admin.ModelAdmin):
 
 
 admin.site.register(CjdnsVpnServer, CjdnsVpnServerAdmin)
+
+
+@admin.register(ClientSoftwareVersion)
+class ClientSoftwareVersionAdmin(admin.ModelAdmin):
+    """Admin represtation of ClientSoftwareVersion."""
+
+    list_display = ('name', 'slug', 'client_os', 'client_cpu_architecture', 'major_number', 'minor_number', 'revision_number', 'is_active',)
+    ordering = ('major_number', 'minor_number', 'revision_number', 'is_active', 'client_os', 'client_cpu_architecture', 'name', 'slug', )
+    search_fields = ('name', 'slug', 'client_os', 'client_cpu_architecture', 'major_number', 'minor_number', 'revision_number', 'is_active',)
+    list_filter = ('client_os', 'client_cpu_architecture', 'major_number', 'minor_number', 'is_active', 'release_datetime')

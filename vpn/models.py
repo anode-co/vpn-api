@@ -78,12 +78,14 @@ class ClientSoftwareVersion(models.Model):
         (PLATFORM_LINUX, _("Linux")),
     ]
 
+    CPU_ARCH_ALL = 'all'
     CPU_ARCH_I686 = 'i686'
     CPU_ARCH_AARCH64 = 'aarch64'
     CPU_ARCH_ARMV7A = 'armv7a'
     CPU_ARCH_X86_64 = 'X86_64'
 
     CPU_ARCHITECTURES = [
+        (CPU_ARCH_ALL, 'all'),
         (CPU_ARCH_I686, 'i686'),
         (CPU_ARCH_AARCH64, 'aarch64'),
         (CPU_ARCH_ARMV7A, 'armv7a'),

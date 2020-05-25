@@ -6,3 +6,4 @@ djangorestframework-api-key
 drf-friendly-errors
 drf-yasg-examples
 mysqlclient
+djangorestframework-camel-case
