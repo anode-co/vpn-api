@@ -112,7 +112,7 @@ class ClientSoftwareVersion(models.Model):
         if self.revision_number is None:
             output = '{}-{}.{}'.format(self.client_os, str(self.major_number), str(self.minor_number))
         else:
-            output = '{}-{}.{}-{}'.format(self.client_os, str(self.major_number), str(self.minor_number), str(self.revision_number))
+            output = '{}-{}.{}.{}'.format(self.client_os, str(self.major_number), str(self.minor_number), str(self.revision_number))
         print(output)
         return output
 
