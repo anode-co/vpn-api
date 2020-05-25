@@ -160,14 +160,16 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
             'network_settings',
             'peering_lines',
             'online_since_datetime',
-            'last_seen_datetime'
+            'last_seen_datetime',
+            'is_fake'
         ]
         example = {
             'name': 'Kenny G',
             'public_key': 'lbqr0rzyc2tuysw3w8gfr95u68kujzlq7zht5hyf452u8yshr120',
             'bandwidth_bps': 10485760,
             'online_since_datetime': "2017-07-21T17:32:28Z",
-            'last_seen_datetime': "2017-07-21T17:32:28Z"
+            'last_seen_datetime': "2017-07-21T17:32:28Z",
+            'is_fake': False,
         }
 
     def create(self, validated_data):

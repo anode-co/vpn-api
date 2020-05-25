@@ -10,14 +10,18 @@ class VpnClientEvent(models.Model):
 
     ERROR_CONNECTION_FAILED = "connectionFailed"
     ERROR_DISCONNECTION = "disconnection"
-    ERROR_ROUTE_STOPPED = "route_stopped"
-    ERROR_CJDNS_CRASH = "cjdns_crash"
+    ERROR_ROUTE_STOPPED = "routeStopped"
+    ERROR_CJDNS_CRASH = "cjdnsCrash"
     ERROR_VPN_CLIEN_CONNECTED = "connection"
     ERROR_VPN_CLIENT_DISCONNECTED = "disconnection"
     ERROR_CJDROUTE = "cjdroute"
-    ERROR_CJDNS_SOCKET = "cjdns_socket"
-    ERROR_VPN_SERVICE = "vpn_service"
+    ERROR_CJDNS_SOCKET = "cjdnsSocket"
+    ERROR_VPN_SERVICE = "vpnService"
     ERROR_OTHER = "other"
+
+    ERROR_ROUTE_STOPPED_OLD = "routeStopped"
+    ERROR_CJDNS_CRASH_OLD = "cjdnsCrash"
+    ERROR_VPN_SERVICE_OLD = "vpnService"
 
     ERROR_CHOICES = [
         (ERROR_CONNECTION_FAILED, _('Could not connect')),
@@ -30,6 +34,10 @@ class VpnClientEvent(models.Model):
         (ERROR_CJDNS_SOCKET, _('Cjdns socket error')),
         (ERROR_VPN_SERVICE, _('VPN service problem')),
         (ERROR_OTHER, _('Other reason')),
+
+        (ERROR_ROUTE_STOPPED_OLD, _('Connected but unable to route traffic')),
+        (ERROR_CJDNS_CRASH_OLD, _('CJDNS crashed')),
+        (ERROR_VPN_SERVICE_OLD, _('VPN service problem')),
     ]
 
     public_key = models.CharField(max_length=64, null=True, blank=True)
