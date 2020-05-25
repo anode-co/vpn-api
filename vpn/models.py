@@ -8,7 +8,7 @@ from django.core.validators import MinValueValidator
 class VpnClientEvent(models.Model):
     """VPN Client Event."""
 
-    ERROR_CONNECTION_FAILED = "connection_failed"
+    ERROR_CONNECTION_FAILED = "connectionFailed"
     ERROR_DISCONNECTION = "disconnection"
     ERROR_ROUTE_STOPPED = "route_stopped"
     ERROR_CJDNS_CRASH = "cjdns_crash"
@@ -384,6 +384,7 @@ class CjdnsVpnServer(models.Model):
     last_seen_datetime = models.DateTimeField(auto_now=True, blank=True)
     region = models.CharField(max_length=200, null=True, blank=True)
     country_code = models.CharField(max_length=2, choices=COUNTRIES, null=True, blank=True)
+    is_fake = models.BooleanField(default=False)
 
     _network_settings = None
 
