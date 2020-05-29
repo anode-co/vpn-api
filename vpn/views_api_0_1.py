@@ -23,18 +23,12 @@ from .serializers_0_1 import (
     VpnClientEventSerializer,
     ClientSoftwareVersionSerializer,
     CjdnsVPNServerSerializer,
+)
+from common.serializers_0_3 import (
     GenericResponseSerializer
 )
 from drf_yasg.utils import swagger_auto_schema
-
-
-class CsrfExemptMixin(object):
-    """Create a CSRF Excempt mixin."""
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        """Dispatch the object."""
-        return super(CsrfExemptMixin, self).dispatch(*args, **kwargs)
+from common.views_api_0_3 import CsrfExemptMixin
 
 
 class PermissionsPerMethodMixin(object):

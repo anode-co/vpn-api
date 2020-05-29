@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_api_key',
     'drf_yasg',
     'drf_yasg_examples',
+    'crispy_forms',
     'common',
     'vpn',
 ]
@@ -68,7 +69,10 @@ ROOT_URLCONF = 'system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.normpath(os.path.join(BASE_DIR, 'templates')),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -177,6 +181,8 @@ REST_FRAMEWORK = {
     ),
 }
 
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
 '''
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -197,3 +203,11 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 # try to fix bug with DRF pagination links not showing https
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
+EMAIL_HOST = 'localhost'
+EMAIL_PORT = 25
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False

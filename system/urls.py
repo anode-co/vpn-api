@@ -1,4 +1,4 @@
-"""system URL Configuration
+"""System URL Configuration.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/2.1/topics/http/urls/
@@ -19,11 +19,25 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
+]
+
+# Version  0.1
+urlpatterns += [
     path('api/0.1/vpn/', include('vpn.urls_api_0_1', namespace='v0.1')),
+]
+
+# Version 0.2
+urlpatterns += [
     path('api/0.2/vpn/', include('vpn.urls_api_0_2', namespace='v0.2')),
+]
+
+# Version 0.3
+urlpatterns += [
+    path('', include('common.urls')),
+    path('api/0.3/vpn/', include('vpn.urls_api_0_3')),
+    path('api/0.3/', include('common.urls_api_0_3')),
 ]
 
 schema_view = get_schema_view(

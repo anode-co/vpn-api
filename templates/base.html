@@ -1,0 +1,13 @@
+{% load i18n %}
+{% load static %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+	<head>
+		<meta name="charset" value="utf-8">
+		<title>{% block head_title %}{% endblock %}</title>
+	</head>
+	<body>
+{% block main_content %}{% endblock %}
+	</body>
+</html>

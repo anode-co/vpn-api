@@ -214,10 +214,3 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
         vpn_server._network_settings = network_settings
 
         return vpn_server
-
-
-class GenericResponseSerializer(serializers.Serializer):
-    """Serializer a generic response."""
-
-    status = serializers.CharField()
-    message = serializers.CharField()

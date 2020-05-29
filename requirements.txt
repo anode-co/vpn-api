@@ -1,4 +1,5 @@
-django
+django==2.2
+six
 django-rest-framework
 django-cors-headers
 drf_yasg
@@ -7,3 +8,5 @@ drf-friendly-errors
 drf-yasg-examples
 mysqlclient
 djangorestframework-camel-case
+fastecdsa
+django-crispy-forms
