@@ -124,7 +124,7 @@ class PublicKey(models.Model):
 
     def __str__(self):
         """Represent as string."""
-        return self.public_key
+        return str(self.public_key)
 
     @classmethod
     def post_save(cls, sender, instance, created, **kwargs):
