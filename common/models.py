@@ -131,7 +131,7 @@ class PublicKey(models.Model):
         """Sent when post_save signal is sent."""
         if instance is not None:
             if instance.public_key_id is None or instance.public_key_id == '':
-                instance.public_key_id = "{}-{}-{}".format(instance.algorithm, instance.public_key[27:10], instance.id)
+                instance.public_key_id = "{}-{}-{}".format(instance.algorithm, instance.public_key[27:37], instance.id)
                 instance.save()
 
 
