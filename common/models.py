@@ -118,7 +118,7 @@ class PublicKey(models.Model):
     """Public keys."""
 
     public_key_id = models.CharField(max_length=32, null=True, blank=True)
-    public_key = models.TextField(max_length=500, null=True, blank=True)
+    public_key = models.TextField(max_length=500, null=True, blank=True, unique=True)
     algorithm = models.CharField(max_length=32, default='rsa-sha256')
     created_at = models.DateTimeField(auto_now_add=True)
 
