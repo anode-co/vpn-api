@@ -130,6 +130,8 @@ class PublicKey(models.Model):
     def post_save(cls, sender, instance, created, **kwargs):
         """Sent when post_save signal is sent."""
         print("running public_Key post save script")
+        print(created)
+        print(cls)
         print(instance)
         print(instance.pk)
         print(instance.algorithm)
