@@ -174,6 +174,8 @@ class HttpCrypoAuthorizationRequiredMixin:
         self.say("CHECKING HTTP AUTHORIZATION")
         headers = request.headers
         print(headers)
+        print('meta:')
+        print(request.META)
         for header in self.REQUIRED_HEADERS:
             if header not in headers:
                 self.say("  missing header: {}".format(header))
