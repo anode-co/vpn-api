@@ -282,7 +282,7 @@ class HttpCrypoAuthorizationRequiredMixin:
         elif algorithm in self.ALGORITHMS_CRYTPO:
             try:
                 rsa_public_key = RSA.importKey(public_key.public_key)
-                self.say("exported public key: {}".format(rsa_public_key.export_key().decode('utf-8')))
+                self.say("exported public key: {}".format(rsa_public_key.exportKey().decode('utf-8')))
             except Exception:
                 raise PermissionDenied
             signer = PKCS1_v1_5.new(rsa_public_key)
