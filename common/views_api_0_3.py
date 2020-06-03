@@ -139,7 +139,7 @@ class HttpCrypoAuthorizationRequiredMixin:
     """Create a Cavage HTTP Authorization Mixin."""
 
     # should be Signature keyId=<key-id>,algorithm="rsa-sha256",headers="(request-target) date digest",signature=<signature-string>
-    in_verbose_mode = False
+    in_verbose_mode = True
 
     AUTH_TYPE = 'signature'
     AUTHORIZATION_HEADER = 'Authorization'
@@ -173,6 +173,7 @@ class HttpCrypoAuthorizationRequiredMixin:
         """Dispatch the object."""
         self.say("CHECKING HTTP AUTHORIZATION")
         headers = request.headers
+        print(headers)
         for header in self.REQUIRED_HEADERS:
             if header not in headers:
                 self.say("  missing header: {}".format(header))
@@ -188,6 +189,8 @@ class HttpCrypoAuthorizationRequiredMixin:
         try:
             auth_type, auth_info = headers[self.AUTHORIZATION_HEADER].split(' ', 1)
         except ValueError:
+            self.say("Could not retrieve authorization type")
+            self.say(headers[self.AUTHORIZATION_HEADER])
             raise SuspiciousOperation
         if auth_type.lower() != self.AUTH_TYPE:
             raise SuspiciousOperation
