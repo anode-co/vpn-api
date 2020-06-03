@@ -168,7 +168,7 @@ class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
     def get(self, request, server_public_key, client_public_key):
         """Request a cjdns VPN server to authorize a client public key."""
-        vpn_server = get_object_or_404(self.get_queryset, public_key=server_public_key)
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
         # TODO: run a connect to an API on the VPN server to authorize the client public key
         response = {
             'status': 'success',
