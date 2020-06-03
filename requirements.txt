@@ -10,4 +10,5 @@ mysqlclient
 djangorestframework-camel-case
 fastecdsa
 django-crispy-forms
-pycrypto
+# pycrypto
+pycryptodome
