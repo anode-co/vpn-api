@@ -66,6 +66,8 @@ class User(AbstractUser):
     public_key_id = models.CharField(max_length=32, null=True, blank=True)
     public_key = models.CharField(max_length=150, null=True, blank=True)
     private_key = models.CharField(max_length=64, null=True, blank=True)
+    is_confirmed = models.BooleanField(default=False)
+    confirmation_code = models.CharField(max_length=64, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = 'email'
@@ -100,6 +102,44 @@ class User(AbstractUser):
         """Log out user."""
         return logout(request)  # , backend=settings.DEFAULT_AUTHENTICATION_BACKEND)
 
+    def confirm_account(self):
+        """Confirm account."""
+        self.is_confirmed = True
+        self.save()
+
+    def generate_confirmation_code(self, commit=True):
+        """Generate a confirmation code."""
+        token_length = 32
+        alphabet = string.digits + string.ascii_lowercase
+        self.confirmation_code = ''.join(random.choice(alphabet) for i in range(token_length))
+        if commit is True:
+            self.save()
+
+    def get_account_confirmation_status_url(self, request):
+        """Return the reset password confirmation status API endpoint."""
+        return request.build_absolute_uri(reverse('common_api_0_3:check_account_registration_confirmation', kwargs={'client_email': self.email}))
+
+    def get_account_confirmation_url(self, request):
+        """Return the reset password confirmation status API endpoint."""
+        return request.build_absolute_uri(reverse('common:confirm_account_registration_with_confirm_code', kwargs={'client_email': self.email, 'confirmation_code': self.confirmation_code}))
+
+    def send_account_registration_confirmation_email(self, request, template_set_name='common/emails/customer__create_account_confirmation', fail_silently=False):
+        """Send an email to the user confirming their password reset request."""
+        if self.confirmation_code is None:
+            self.generate_confirmation_code(commit=True)
+
+        context = {
+            'user': self,
+            'account_confirmation_url': self.get_account_confirmation_url(request)
+        }
+        account_confirm_email = HtmlEmail(
+            template_set_name,
+            settings.DEFAULT_FROM_EMAIL,
+            [self.user.email],
+            context
+        )
+        account_confirm_email.send(fail_silently)
+
     @classmethod
     def pre_save(cls, instance, *args, **kwargs):
         """Pre-save script. Generate public/private key."""
@@ -118,7 +158,7 @@ class PublicKey(models.Model):
     """Public keys."""
 
     public_key_id = models.CharField(max_length=32, null=True, blank=True)
-    public_key = models.TextField(max_length=500, unique=True)
+    public_key = models.TextField(max_length=500)
     algorithm = models.CharField(max_length=32, default='rsa-sha256')
     created_at = models.DateTimeField(auto_now_add=True)
 

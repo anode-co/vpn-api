@@ -4,6 +4,21 @@ from crispy_forms.layout import Submit
 from django.utils.translation import ugettext_lazy as _
 
 
+class ConfirmAccountRegistrationForm(forms.Form):
+    """Confirm Account registration."""
+
+    confirmation_code = forms.CharField(required=True)
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the form with Crispy FormHelper."""
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_id = 'id-confirmaccountregistration'
+        self.helper.form_method = 'get'
+
+        self.helper.add_input(Submit('submit', _('Confirm')))
+
+
 class ConfirmPasswordResetForm(forms.Form):
     """Confirm Password Reset."""
 

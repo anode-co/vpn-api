@@ -4,6 +4,7 @@ from .models import (
     PasswordResetToken,
     PublicKey,
 )
+from rest_framework.validators import UniqueValidator
 
 
 class GenericResponseSerializer(serializers.Serializer):
@@ -22,6 +23,19 @@ class UserEmailSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'email',
+        ]
+
+
+class UserAccountCreatedSerializer(serializers.ModelSerializer):
+    """Serialize the email and confirmation fields of the User."""
+
+    class Meta:
+        """Meta information."""
+
+        model = User
+        fields = [
+            'email',
+            'confirmation_code'
         ]
 
 
@@ -48,6 +62,9 @@ class PublicKeyInputSerializer(serializers.ModelSerializer):
         fields = [
             'public_key',
             'algorithm'
+        ]
+        validators = [
+            UniqueValidator(queryset=PublicKey.objects.all())
         ]
 
 

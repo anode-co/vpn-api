@@ -1,0 +1,8 @@
+{% load i18n %}{% trans 'Confirm your Anode VPN account' %}
+
+{% blocktrans %}
+Congratulations on downloading the Anode VPN and setting up your account. You can complete your account registration by going to this URL:
+{% endblocktrans %}
+
+{{ account_confirmation_url }}
+

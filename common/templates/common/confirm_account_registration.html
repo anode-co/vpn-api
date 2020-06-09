@@ -4,19 +4,18 @@
 {% load crispy_forms_tags %}
 
 {% block head_title %}
-	{% trans 'Confirm Password Reset Request' %}
+	{% trans 'Confirm Account Registration' %}
 {% endblock %}
 
 {% block main_content %}
 		<h1>
-			{% trans 'Confirm Password Reset Request' %}
+			{% trans 'Confirm Account Registration' %}
 		</h1>
 
 		<p>
-			{% trans 'Confirm your password reset request.' %}
+			{% trans 'Confirm your new account.' %}
 			{% trans 'Enter your email and your confirmation code to continue.' %}
 		</p>
 		{% crispy form form.helper %}
-
 {% endblock %}
 

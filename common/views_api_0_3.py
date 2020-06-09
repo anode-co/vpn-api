@@ -17,6 +17,7 @@ from .serializers_0_3 import (
     PasswordResetTokenSerializer,
     PublicKeyInputSerializer,
     PublicKeyOutputSerializer,
+    UserAccountCreatedSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
@@ -529,8 +530,29 @@ class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
         input_serializer = UserEmailSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         user = input_serializer.save()
+        user.send_account_registration_confirmation_email(request)
         output_serializer = self.get_serializer(user)
         return Response(output_serializer.data, status.HTTP_201_CREATED)
+
+
+class CreateAccountConfirmationStatusApiView(GenericAPIView):
+    """Check on the status of a password reset process."""
+
+    serializer_class = GenericResponseSerializer
+
+    @swagger_auto_schema(responses={200: 'Ok', 202: 'Accepted', 404: 'Not Found'})
+    def get(self, request, client_email):
+        """Check on the status of a password reset confirmation."""
+        print(client_email)
+        user = get_object_or_404(User, email=client_email)
+        http_status = status.HTTP_202_ACCEPTED
+        output = {'status': 'pending'}
+        if user.is_confirmed is True:
+            http_status = status.HTTP_200_OK
+            output = {'status': 'complete'}
+        serializer = self.serializer_class(data=output)
+        serializer.is_valid()
+        return Response(serializer.data, status=http_status)
 
 
 class CreateResetPasswordRequestApiView(GenericAPIView):
