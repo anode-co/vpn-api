@@ -56,29 +56,51 @@ class UserAccountCreatedSerializer(serializers.ModelSerializer):
 class UserAccountConfirmedSerializer(serializers.Serializer):
     """Serialize the status of the account creation."""
 
-    STATUS_SUCCESS = 'pending'
+    STATUS_PENDING = 'pending'
     STATUS_COMPLETE = 'complete'
-    STATUS_ERROR = 'error'
     STATUS_CHOICES = [
-        (STATUS_SUCCESS, STATUS_SUCCESS),
+        (STATUS_PENDING, STATUS_PENDING),
         (STATUS_COMPLETE, STATUS_COMPLETE),
-        (STATUS_ERROR, STATUS_ERROR),
     ]
 
     status = serializers.ChoiceField(choices=STATUS_CHOICES)
     app_secret_token = serializers.CharField(allow_blank=True, allow_null=True)
 
 
+class UserAccountPendingSerializer(serializers.Serializer):
+    """Serialize the status of the account creation."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETE = 'complete'
+    STATUS_CHOICES = [
+        (STATUS_COMPLETE, STATUS_COMPLETE),
+        (STATUS_PENDING, STATUS_PENDING),
+    ]
+
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+
+
+class PasswordResetPendingSerializer(serializers.Serializer):
+    """Serialize the status of the account creation."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETE = 'complete'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, STATUS_PENDING),
+        (STATUS_COMPLETE, STATUS_COMPLETE),
+    ]
+
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+
+
 class PasswordResetConfirmedSerializer(serializers.Serializer):
     """Serialize the status of the account creation."""
 
-    STATUS_SUCCESS = 'pending'
+    STATUS_PENDING = 'pending'
     STATUS_COMPLETE = 'complete'
-    STATUS_ERROR = 'error'
     STATUS_CHOICES = [
-        (STATUS_SUCCESS, STATUS_SUCCESS),
+        (STATUS_PENDING, STATUS_PENDING),
         (STATUS_COMPLETE, STATUS_COMPLETE),
-        (STATUS_ERROR, STATUS_ERROR),
     ]
 
     status = serializers.ChoiceField(choices=STATUS_CHOICES)
@@ -109,9 +131,13 @@ class PublicKeyInputSerializer(serializers.ModelSerializer):
             'public_key',
             'algorithm'
         ]
-        validators = [
-            UniqueValidator(queryset=PublicKey.objects.all())
-        ]
+
+        def clean_public_key(self, public_key):
+            """Make sure public key is unique."""
+            existing_public_keys = PublicKey.objects.filter(public_key=public_key)
+            if existing_public_keys.exists():
+                raise serializers.ValidationError("This public key is already registered")
+            return public_key
 
 
 class PublicKeyOutputSerializer(serializers.ModelSerializer):

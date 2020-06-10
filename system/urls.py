@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ]
 
+'''
 # Version  0.1
 urlpatterns += [
     path('api/0.1/vpn/', include('vpn.urls_api_0_1', namespace='v0.1')),
@@ -32,12 +33,15 @@ urlpatterns += [
 urlpatterns += [
     path('api/0.2/vpn/', include('vpn.urls_api_0_2', namespace='v0.2')),
 ]
-
+'''
 # Version 0.3
 urlpatterns += [
     path('', include('common.urls')),
-    path('api/0.3/vpn/', include('vpn.urls_api_0_3')),
-    path('api/0.3/', include('common.urls_api_0_3')),
+    path('api/0.3/vpn/', include('vpn.urls_api_0_3_logging', namespace="Event Logging")),
+    path('api/0.3/vpn/', include('vpn.urls_api_0_3_clients', namespace="Clients")),
+    path('api/0.3/vpn/', include('vpn.urls_api_0_3_servers', namespace="Servers")),
+    path('api/0.3/', include('common.urls_api_0_3_account_management', namespace="Account Management")),
+    path('api/0.3/', include('common.urls_api_0_3_authorization', namespace="Authorization")),
 ]
 
 schema_view = get_schema_view(

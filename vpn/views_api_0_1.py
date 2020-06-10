@@ -1,13 +1,8 @@
 import json
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.viewsets import ViewSet
 from rest_framework.generics import GenericAPIView
-from rest_framework.mixins import ListModelMixin
-from rest_framework_api_key.permissions import HasAPIKey
-from rest_framework.decorators import action, permission_classes  # other imports elided
+from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from ipaddress import ip_address
@@ -15,9 +10,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from .models import (
     ClientSoftwareVersion,
-    CjdnsVpnServerPeeringLine,
     CjdnsVpnServer,
-    NetworkExitRange,
 )
 from .serializers_0_1 import (
     VpnClientEventSerializer,
@@ -28,7 +21,7 @@ from common.serializers_0_3 import (
     GenericResponseSerializer
 )
 from drf_yasg.utils import swagger_auto_schema
-from common.views_api_0_3 import CsrfExemptMixin
+from common.permissions import CsrfExemptMixin, HasHttpCrypoAuthorization
 
 
 class PermissionsPerMethodMixin(object):
@@ -65,7 +58,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
     def add_loggable_event(self, request):
         """Log debugging information.
 
-        Save an event that happened on a VPN API client such as crashes or 
+        Save an event that happened on a VPN API client such as crashes or
         routing problems.
         """
         ip = None
@@ -94,12 +87,15 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
     serializer_class = ClientSoftwareVersionSerializer
 
     @swagger_auto_schema(responses={404: 'client_os not found'})
-    def get(self, request, client_os):
+    def get(self, request, client_os, client_cpu_architecture=None):
         """Get the latest client OS version data.
 
         Get information about the latest client app version for an OS.
         """
-        software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
+        if client_cpu_architecture is None or client_cpu_architecture == 'all':
+            software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
+        else:
+            software_version = self.get_queryset().filter(client_os=client_os, client_cpu_architecture=client_cpu_architecture).order_by('-major_number', '-minor_number', 'revision_number').first()
         if software_version is None:
             raise Http404
         serializer = self.get_serializer(software_version)
@@ -107,10 +103,13 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
 
     @action(detail=False, methods=['post'])
     @swagger_auto_schema(responses={400: 'Invalid request'})
-    @permission_classes((HasAPIKey,))
+    @permission_classes((HasHttpCrypoAuthorization,))
     def post(self, request, client_os):
-        """Add a version."""
-        # TODO: Require API Key
+        """Register a new clent software version.
+
+        Register a new software version when one is published.
+        """
+        # TODO: Require crypto auth
         request.data['client_os'] = client_os
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -130,7 +129,7 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     pagination_class = LimitOffsetPagination
 
     @swagger_auto_schema(responses={400: 'Invalid request'})
-    # @permission_classes((HasAPIKey,))
+    @permission_classes((HasHttpCrypoAuthorization,))
     def create(self, request):
         """Add new VPN server.
 
@@ -181,7 +180,7 @@ class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):
 
         Request that a VPN authorize and create routes for a client public key.
         """
-        vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
+        get_object_or_404(self.get_queryset(), public_key=server_public_key)
         # TODO: run a connect to an API on the VPN server to authorize the client public key
         response = {
             'status': 'success',

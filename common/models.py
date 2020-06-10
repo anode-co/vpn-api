@@ -136,7 +136,7 @@ class User(AbstractUser):
 
     def get_account_confirmation_status_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common_api_0_3:check_account_registration_confirmation', kwargs={'client_email': self.email}))
+        return request.build_absolute_uri(reverse('common_api_0_3_account_management:check_account_registration_confirmation', kwargs={'client_email': self.email}))
 
     def get_account_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
@@ -223,7 +223,7 @@ class PasswordResetRequest(models.Model):
 
     def get_password_reset_status_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common_api_0_3:password_reset', kwargs={'client_email': self.user.email}))
+        return request.build_absolute_uri(reverse('common_api_0_3_account_management:password_reset', kwargs={'client_email': self.user.email}))
 
     def get_password_reset_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
