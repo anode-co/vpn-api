@@ -63,7 +63,11 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
 
     @swagger_auto_schema(responses={400: 'Invalid request'})
     def add_loggable_event(self, request):
-        """Save an event that happened on a VPN API client such as crashes or routing problems."""
+        """Log debugging information.
+
+        Save an event that happened on a VPN API client such as crashes or 
+        routing problems.
+        """
         ip = None
         try:
             ip = ip_address(self.get_client_ip(request))
@@ -91,7 +95,10 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
 
     @swagger_auto_schema(responses={404: 'client_os not found'})
     def get(self, request, client_os):
-        """Get the latest client OS version data."""
+        """Get the latest client OS version data.
+
+        Get information about the latest client app version for an OS.
+        """
         software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
         if software_version is None:
             raise Http404
@@ -125,7 +132,10 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     @swagger_auto_schema(responses={400: 'Invalid request'})
     # @permission_classes((HasAPIKey,))
     def create(self, request):
-        """Retrieve a Cjdns VPN Server from the server's public_key."""
+        """Add new VPN server.
+
+        Add a new VPN server to the server list
+        """
         print(json.dumps(request.data, indent=4))
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -167,7 +177,10 @@ class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):
 
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
     def get(self, request, server_public_key, client_public_key):
-        """Request a cjdns VPN server to authorize a client public key."""
+        """Authorize client on a VPN.
+
+        Request that a VPN authorize and create routes for a client public key.
+        """
         vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
         # TODO: run a connect to an API on the VPN server to authorize the client public key
         response = {

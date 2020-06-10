@@ -493,12 +493,11 @@ class RegisterPublicKeyView(CsrfExemptMixin, GenericAPIView):
 
     @swagger_auto_schema(responses={400: 'Invalid request'}, request_body=PublicKeyInputSerializer)
     def post(self, request):
-        """When a new email address is submitted.
+        """Register a new public key
 
-        The email address is registered with the system and a unique token
-        is generated for that email.
-        This token must be kept secret and is used for operations
-        related to account management.
+        Register a new public key. This key is used to verify signatures
+        on API endpoints that require authorization. This authorization
+        confirms to the draft-cavage-http-signatures-10 Authorization standard.
         """
         input_serializer = PublicKeyInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -508,7 +507,7 @@ class RegisterPublicKeyView(CsrfExemptMixin, GenericAPIView):
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
-class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
+class CreateAccountApiView(HttpCrypoAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
     """When a new email address is submitted.
 
     the email address is registered with the system and a unique token
@@ -521,12 +520,13 @@ class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
 
     @swagger_auto_schema(responses={400: 'Invalid request'}, request_body=UserEmailSerializer)
     def post(self, request):
-        """When a new email address is submitted.
+        """Register a new email address.
 
-        The email address is registered with the system and a unique token
-        is generated for that email.
-        This token must be kept secret and is used for operations
-        related to account management.
+        (REQUIRES AUTHORIZATION). The email address is registered with the system and an email
+        is sent to that email with a confirmation link.  The user opens the
+        confirmation link, which confirms their registration.
+        Meanwhile, the "Check status of new email registration" will reply with
+        {"status":"pending"} until the user has opened the confirm URL.
         """
         input_serializer = UserEmailSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -537,14 +537,23 @@ class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
-class CreateAccountConfirmationStatusApiView(GenericAPIView):
+class CreateAccountConfirmationStatusApiView(HttpCrypoAuthorizationRequiredMixin, GenericAPIView):
     """Check on the status of a password reset process."""
 
     serializer_class = UserAccountConfirmedSerializer
 
     @swagger_auto_schema(responses={200: 'Ok', 202: 'Accepted', 404: 'Not Found'})
     def get(self, request, client_email):
-        """Check on the status of a password reset confirmation."""
+        """Check status of new email registration.
+
+        (REQUIRES AUTHORIZATION). When a new email address is registered wit the
+        "Register a new email address" method, this method responds responds
+        with a {"status":"pending"} until the user confirms their email address.
+        Once the user confirms their email address, this method returns the
+        appSecretToken which can be used to decrypt the wallet
+        on the user's app. Once viewed, the password request is destroyed and
+        cannot be viewed again.
+        """
         user = get_object_or_404(User, email=client_email)
         http_status = status.HTTP_202_ACCEPTED
         output = {'status': 'pending'}
@@ -562,7 +571,7 @@ class CreateAccountConfirmationStatusApiView(GenericAPIView):
         return Response(serializer.data, status=http_status)
 
 
-class CreateResetPasswordRequestApiView(GenericAPIView):
+class CreateResetPasswordRequestApiView(HttpCrypoAuthorizationRequiredMixin, GenericAPIView):
     """Create a password reset request."""
 
     serializer_class = PasswordResetInitializationSerializer
@@ -571,7 +580,7 @@ class CreateResetPasswordRequestApiView(GenericAPIView):
     def get(self, request, client_email):
         """Check the status of a password reset request.
 
-        When the user goes to the web page provided in the password reset
+        (REQUIRES AUTHORIZATION). When the user goes to the web page provided in the password reset
         two factor authorization email, sent with the
         "Initialize a password reset request" method, the status of their
         password reset request will change from "pending" to "success."
@@ -598,7 +607,7 @@ class CreateResetPasswordRequestApiView(GenericAPIView):
     def post(self, request, client_email):
         """Initialize a password reset request.
 
-        When password registration request is created, the user of
+        (REQUIRES AUTHORIZATION). When password registration request is created, the user of
         <client_email> is sent a confirmation email as a
         two factor authentication. The user must confirm their email
         in  order to release the appSecretKey to the VPN app, which
