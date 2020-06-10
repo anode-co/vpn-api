@@ -11,6 +11,7 @@ import random
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
+from django.utils import timezone
 
 
 class Utilities:
@@ -67,8 +68,12 @@ class User(AbstractUser):
     public_key = models.CharField(max_length=150, null=True, blank=True)
     private_key = models.CharField(max_length=64, null=True, blank=True)
     is_confirmed = models.BooleanField(default=False)
+    is_app_secret_seen = models.BooleanField(default=False)
     confirmation_code = models.CharField(max_length=64, null=True, blank=True)
+    app_secret_token = models.CharField(max_length=65, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    account_confirmation_status_url = None
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -89,7 +94,7 @@ class User(AbstractUser):
 
     def create_password_request(self):
         """Create a new password request."""
-        password_reset_token = PasswordResetToken()
+        password_reset_token = PasswordResetRequest()
         password_reset_token.user = self
         password_reset_token.save()
         return password_reset_token
@@ -105,6 +110,12 @@ class User(AbstractUser):
     def confirm_account(self):
         """Confirm account."""
         self.is_confirmed = True
+        self.generate_app_secret_token(commit=False)
+        self.save()
+
+    def set_app_secret_seen(self):
+        """Confirm account."""
+        self.is_app_secret_seen = True
         self.save()
 
     def generate_confirmation_code(self, commit=True):
@@ -112,6 +123,14 @@ class User(AbstractUser):
         token_length = 32
         alphabet = string.digits + string.ascii_lowercase
         self.confirmation_code = ''.join(random.choice(alphabet) for i in range(token_length))
+        if commit is True:
+            self.save()
+
+    def generate_app_secret_token(self, commit=True):
+        """Generate a confirmation code."""
+        token_length = 64
+        alphabet = string.digits + string.ascii_lowercase + string.ascii_uppercase
+        self.app_secret_token = ''.join(random.choice(alphabet) for i in range(token_length))
         if commit is True:
             self.save()
 
@@ -135,7 +154,7 @@ class User(AbstractUser):
         account_confirm_email = HtmlEmail(
             template_set_name,
             settings.DEFAULT_FROM_EMAIL,
-            [self.user.email],
+            [self.email],
             context
         )
         account_confirm_email.send(fail_silently)
@@ -149,6 +168,8 @@ class User(AbstractUser):
             instance.private_key = Utilities.to_base32(private_key)
         if instance.public_key_id is None:
             instance.public_key_id = "{}-{}".format(instance.public_key[:10], instance.id)
+        if instance.is_confirmed is True and instance.app_secret_token is None:
+            instance.generate_app_secret_token(commit=False)
 
 
 pre_save.connect(User.pre_save, sender=User)
@@ -178,11 +199,14 @@ class PublicKey(models.Model):
 post_save.connect(PublicKey.post_save, sender=PublicKey)
 
 
-class PasswordResetToken(models.Model):
+class PasswordResetRequest(models.Model):
     """Password reset token. Created when a user requests to reset their password."""
+
+    EXPIRES_HOURS = 1
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     password_reset_token = models.CharField(max_length=120, null=True, blank=True)
+    expires_on = models.DateTimeField(null=True, blank=True)
     is_complete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -199,7 +223,7 @@ class PasswordResetToken(models.Model):
 
     def get_password_reset_status_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common_api_0_3:check_password_reset_confirmation', kwargs={'client_email': self.user.email, 'password_reset_token': self.password_reset_token}))
+        return request.build_absolute_uri(reverse('common_api_0_3:password_reset', kwargs={'client_email': self.user.email}))
 
     def get_password_reset_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
@@ -234,9 +258,11 @@ class PasswordResetToken(models.Model):
         """Pre-save script. Generate public/private key."""
         if instance.password_reset_token is None:
             instance.generate_token()
+        if instance.expires_on is None:
+            instance.expires_on = timezone.now() + timezone.timedelta(hours=instance.EXPIRES_HOURS)
 
 
-pre_save.connect(PasswordResetToken.pre_save, sender=PasswordResetToken)
+pre_save.connect(PasswordResetRequest.pre_save, sender=PasswordResetRequest)
 
 
 class HtmlEmail:

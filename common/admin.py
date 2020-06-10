@@ -3,7 +3,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from .models import (
     User,
-    PasswordResetToken,
+    PasswordResetRequest,
     PublicKey
 )
 from django.contrib import admin
@@ -14,7 +14,7 @@ class UserAdmin(DjangoUserAdmin):
     """Define admin model for custom User model with no email field."""
 
     fieldsets = (
-        (None, {'fields': ('email', 'public_key_id', 'public_key', 'password')}),
+        (None, {'fields': ('email', 'public_key_id', 'public_key', 'is_confirmed', 'is_app_secret_seen', 'confirmation_code', 'app_secret_token', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser',
                                        'groups', 'user_permissions')}),
@@ -31,8 +31,8 @@ class UserAdmin(DjangoUserAdmin):
     ordering = ('email',)
 
 
-@admin.register(PasswordResetToken)
-class PasswordResetTokenAdmin(admin.ModelAdmin):
+@admin.register(PasswordResetRequest)
+class PasswordResetRequestAdmin(admin.ModelAdmin):
     """Admin represtation of ClientSoftwareVersion."""
 
     list_display = ('password_reset_token', 'user', 'created_at', 'is_complete')

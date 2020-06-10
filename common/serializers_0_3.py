@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     User,
-    PasswordResetToken,
+    PasswordResetRequest,
     PublicKey,
 )
 from rest_framework.validators import UniqueValidator
@@ -14,16 +14,31 @@ class GenericResponseSerializer(serializers.Serializer):
     message = serializers.CharField(allow_null=True, allow_blank=True)
 
 
-class UserEmailSerializer(serializers.ModelSerializer):
+class UserEmailSerializer(serializers.Serializer):
     """Serialize the email field of the User."""
 
-    class Meta:
-        """Meta information."""
+    email = serializers.EmailField()
 
-        model = User
-        fields = [
-            'email',
-        ]
+    def validate_email(self, email):
+        """Validate the email field."""
+        try:
+            user = User.objects.get(email=email)
+            if user.is_confirmed:
+                raise serializers.ValidationError("This email address is already registered")
+        except User.DoesNotExist:
+            pass
+        return email
+
+    def save(self, commit=True):
+        """Save the User."""
+        email = self.validated_data['email']
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            user = User.objects.create(**self.validated_data)
+            if commit is True:
+                user.save()
+        return user
 
 
 class UserAccountCreatedSerializer(serializers.ModelSerializer):
@@ -34,9 +49,40 @@ class UserAccountCreatedSerializer(serializers.ModelSerializer):
 
         model = User
         fields = [
-            'email',
-            'confirmation_code'
+            'account_confirmation_status_url'
         ]
+
+
+class UserAccountConfirmedSerializer(serializers.Serializer):
+    """Serialize the status of the account creation."""
+
+    STATUS_SUCCESS = 'pending'
+    STATUS_COMPLETE = 'complete'
+    STATUS_ERROR = 'error'
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, STATUS_SUCCESS),
+        (STATUS_COMPLETE, STATUS_COMPLETE),
+        (STATUS_ERROR, STATUS_ERROR),
+    ]
+
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+    app_secret_token = serializers.CharField(allow_blank=True, allow_null=True)
+
+
+class PasswordResetConfirmedSerializer(serializers.Serializer):
+    """Serialize the status of the account creation."""
+
+    STATUS_SUCCESS = 'pending'
+    STATUS_COMPLETE = 'complete'
+    STATUS_ERROR = 'error'
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, STATUS_SUCCESS),
+        (STATUS_COMPLETE, STATUS_COMPLETE),
+        (STATUS_ERROR, STATUS_ERROR),
+    ]
+
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+    app_secret_token = serializers.CharField(allow_blank=True, allow_null=True)
 
 
 class UserPublicKeySerializer(serializers.ModelSerializer):
@@ -80,14 +126,13 @@ class PublicKeyOutputSerializer(serializers.ModelSerializer):
         ]
 
 
-class PasswordResetTokenSerializer(serializers.ModelSerializer):
+class PasswordResetInitializationSerializer(serializers.ModelSerializer):
     """Serialize the Password Request Response."""
 
     class Meta:
         """Meta information."""
 
-        model = PasswordResetToken
+        model = PasswordResetRequest
         fields = [
-            'password_reset_token',
             'password_reset_status_url'
         ]

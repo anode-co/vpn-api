@@ -2,7 +2,7 @@ from django.views import View
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from .models import (
-    PasswordResetToken,
+    PasswordResetRequest,
     User,
 )
 from .forms import (
@@ -65,7 +65,7 @@ class ConfirmResetPasswordRequestView(View):
         if password_reset_token is None:
             password_reset_token_str = request.GET.get('password_reset_token')
             if password_reset_token_str is not None and password_reset_token_str != '':
-                password_reset_token = get_object_or_404(PasswordResetToken, password_reset_token=password_reset_token_str)
+                password_reset_token = get_object_or_404(PasswordResetRequest, password_reset_token=password_reset_token_str)
                 password_reset_token.confirm()
                 return self.render_complete(request, password_reset_token)
             else:
@@ -76,7 +76,7 @@ class ConfirmResetPasswordRequestView(View):
                 }
                 return render(request, 'common/confirm_password_token.html', context)
         else:
-            password_reset_token = get_object_or_404(PasswordResetToken, password_reset_token=password_reset_token, user__email=client_email, is_complete=False)
+            password_reset_token = get_object_or_404(PasswordResetRequest, password_reset_token=password_reset_token, user__email=client_email, is_complete=False)
             password_reset_token.confirm()
             return self.render_complete(request, password_reset_token)
 
@@ -105,7 +105,7 @@ class ConfirmResetPasswordEmailView(View):
 
     def get(self, request, password_reset_token):
         """Preview the email."""
-        password_reset_token = get_object_or_404(PasswordResetToken, password_reset_token=password_reset_token)
+        password_reset_token = get_object_or_404(PasswordResetRequest, password_reset_token=password_reset_token)
         print("hello")
         print(password_reset_token)
         context = {

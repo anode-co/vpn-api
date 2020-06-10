@@ -1,0 +1,9 @@
+{
+	"email": {
+		"host": "stmp.google.com",
+		"username": "email@example.com",
+		"password": "super secret password",
+		"port": 587,
+		"useTLS": true
+	}
+}

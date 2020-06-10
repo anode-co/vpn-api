@@ -1,23 +1,23 @@
 from rest_framework.generics import GenericAPIView
-from rest_framework.decorators import action, permission_classes  # other imports elided
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.http import Http404
 from .models import (
     User,
-    PasswordResetToken,
+    PasswordResetRequest,
     PublicKey
 )
 from .serializers_0_3 import (
     UserEmailSerializer,
-    UserPublicKeySerializer,
-    GenericResponseSerializer,
-    PasswordResetTokenSerializer,
+    PasswordResetInitializationSerializer,
+    PasswordResetConfirmedSerializer,
     PublicKeyInputSerializer,
     PublicKeyOutputSerializer,
     UserAccountCreatedSerializer,
+    UserAccountConfirmedSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
@@ -26,8 +26,9 @@ import base64
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
-from fastecdsa import curve, ecdsa, keys
+from fastecdsa import curve, ecdsa
 from fastecdsa.encoding import pem
+from django.utils import timezone
 
 
 class CsrfExemptMixin(object):
@@ -516,7 +517,7 @@ class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
     related to account management.
     """
 
-    serializer_class = UserPublicKeySerializer
+    serializer_class = UserAccountCreatedSerializer
 
     @swagger_auto_schema(responses={400: 'Invalid request'}, request_body=UserEmailSerializer)
     def post(self, request):
@@ -531,6 +532,7 @@ class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
         input_serializer.is_valid(raise_exception=True)
         user = input_serializer.save()
         user.send_account_registration_confirmation_email(request)
+        user.account_confirmation_status_url = user.get_account_confirmation_status_url(request)
         output_serializer = self.get_serializer(user)
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
@@ -538,18 +540,23 @@ class CreateAccountApiView(CsrfExemptMixin, GenericAPIView):
 class CreateAccountConfirmationStatusApiView(GenericAPIView):
     """Check on the status of a password reset process."""
 
-    serializer_class = GenericResponseSerializer
+    serializer_class = UserAccountConfirmedSerializer
 
     @swagger_auto_schema(responses={200: 'Ok', 202: 'Accepted', 404: 'Not Found'})
     def get(self, request, client_email):
         """Check on the status of a password reset confirmation."""
-        print(client_email)
         user = get_object_or_404(User, email=client_email)
         http_status = status.HTTP_202_ACCEPTED
         output = {'status': 'pending'}
         if user.is_confirmed is True:
-            http_status = status.HTTP_200_OK
-            output = {'status': 'complete'}
+            if user.is_app_secret_seen is True:
+                http_status = status.HTTP_200_OK
+                output = {'status': 'complete'}
+            else:
+                http_status = status.HTTP_200_OK
+                output = {'status': 'complete', 'app_secret_token': user.app_secret_token}
+                # for security reasons, disallow access to this app_secret_token in the future
+                user.set_app_secret_seen()
         serializer = self.serializer_class(data=output)
         serializer.is_valid()
         return Response(serializer.data, status=http_status)
@@ -558,36 +565,50 @@ class CreateAccountConfirmationStatusApiView(GenericAPIView):
 class CreateResetPasswordRequestApiView(GenericAPIView):
     """Create a password reset request."""
 
-    serializer_class = PasswordResetTokenSerializer
+    serializer_class = PasswordResetInitializationSerializer
 
-    @swagger_auto_schema(responses={404: 'Not Found'})
+    @swagger_auto_schema(responses={404: 'Not Found'}, response_body=PasswordResetConfirmedSerializer)
+    def get(self, request, client_email):
+        """Check the status of a password reset request.
+
+        When the user goes to the web page provided in the password reset
+        two factor authorization email, sent with the
+        "Initialize a password reset request" method, the status of their
+        password reset request will change from "pending" to "success."
+        When the status changes to "success," the email's appSecretKey
+        will be revealed one time only and the password reset request will
+        be destroyed.
+        """
+        now = timezone.now()
+        password_reset_token = PasswordResetRequest.objects.select_related('user').filter(user__email=client_email, expires_on__gt=now).order_by('-created_at').first()
+        if password_reset_token is None:
+            raise Http404
+        http_status = status.HTTP_202_ACCEPTED
+        output = {'status': 'pending'}
+        if password_reset_token.is_complete is True:
+            http_status = status.HTTP_200_OK
+            output = {'status': 'complete', 'app_secret_token': password_reset_token.user.app_secret_token}
+            # for security reasons, delete any related PasswordResetRequests
+            PasswordResetRequest.objects.filter(user__email=client_email).delete()
+        serializer = PasswordResetConfirmedSerializer(data=output)
+        serializer.is_valid()
+        return Response(serializer.data, status=http_status)
+
+    @swagger_auto_schema(responses={404: 'Not Found'}, request_body=None)
     def post(self, request, client_email):
-        """."""
+        """Initialize a password reset request.
+
+        When password registration request is created, the user of
+        <client_email> is sent a confirmation email as a
+        two factor authentication. The user must confirm their email
+        in  order to release the appSecretKey to the VPN app, which
+        can be used to decrypt the app wallet and change the password.
+        """
         user = get_object_or_404(User, email=client_email)
-        PasswordResetToken.objects.filter(user=user).delete()
+        PasswordResetRequest.objects.filter(user=user).delete()
         password_reset_token = user.create_password_request()
         password_reset_token.send_password_reset_confirmation_email(request)
         password_reset_token.password_reset_status_url = password_reset_token.get_password_reset_status_url(request)
         serializer = self.serializer_class(password_reset_token)
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
 
-
-class ResetPasswordConfirmationStatusApiView(GenericAPIView):
-    """Check on the status of a password reset process."""
-
-    serializer_class = GenericResponseSerializer
-
-    @swagger_auto_schema(responses={200: 'Ok', 202: 'Accepted', 404: 'Not Found'})
-    def get(self, request, client_email, password_reset_token):
-        """Check on the status of a password reset confirmation."""
-        print(client_email)
-        print(password_reset_token)
-        session_token = get_object_or_404(PasswordResetToken, password_reset_token=password_reset_token, user__email=client_email)
-        http_status = status.HTTP_202_ACCEPTED
-        output = {'status': 'pending'}
-        if session_token.is_complete is True:
-            http_status = status.HTTP_200_OK
-            output = {'status': 'complete'}
-        serializer = self.serializer_class(data=output)
-        serializer.is_valid()
-        return Response(serializer.data, status=http_status)

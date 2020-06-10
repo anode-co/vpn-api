@@ -2,7 +2,6 @@ from django.urls import path
 from .views_api_0_3 import (
     CreateAccountApiView,
     CreateResetPasswordRequestApiView,
-    ResetPasswordConfirmationStatusApiView,
     DigestTestApiView,
     AuthTestApiView,
     RegisterPublicKeyView,
@@ -16,8 +15,7 @@ urlpatterns = [
 
     path('vpn/accounts/<client_email>/confirmstatus/', CreateAccountConfirmationStatusApiView.as_view(), name="check_account_registration_confirmation"),
 
-    path('vpn/accounts/<client_email>/password/', CreateResetPasswordRequestApiView.as_view(), name="Request to change the password of an existing client account"),
-    path('vpn/accounts/<client_email>/password/<password_reset_token>/', ResetPasswordConfirmationStatusApiView.as_view(), name="check_password_reset_confirmation"),
+    path('vpn/accounts/<client_email>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
 
     path('vpn/clients/publickeys/', RegisterPublicKeyView.as_view(), name="register_client_public_key"),
     path('tests/digest/', DigestTestApiView.as_view(), name="digest_test"),
