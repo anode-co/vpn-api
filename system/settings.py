@@ -212,6 +212,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 # try to fix bug with DRF pagination links not showing https
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+DEFAULT_FROM_EMAIL = 'noreply@anode.co'
+
 EMAIL_BACKEND = aux_settings['email']['backend']
 EMAIL_HOST = aux_settings['email']['host']
 EMAIL_PORT = aux_settings['email']['port']
