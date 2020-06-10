@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import json
+
+AUX_SETTING_FILE = 'system/config.json'
+aux_settings = {}
+with open(AUX_SETTING_FILE, 'r') as aux_config:
+    aux_settings = json.loads(aux_config.read())
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -204,10 +210,9 @@ CORS_ORIGIN_ALLOW_ALL = True
 # try to fix bug with DRF pagination links not showing https
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 25
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = False
+EMAIL_BACKEND = aux_settings['email']['backend']
+EMAIL_HOST = aux_settings['email']['host']
+EMAIL_PORT = aux_settings['email']['port']
+EMAIL_HOST_USER = aux_settings['email']['username']
+EMAIL_HOST_PASSWORD = aux_settings['email']['password']
+EMAIL_USE_TLS = aux_settings['email']['useTLS']

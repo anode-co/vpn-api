@@ -605,6 +605,7 @@ class CreateResetPasswordRequestApiView(GenericAPIView):
         can be used to decrypt the app wallet and change the password.
         """
         user = get_object_or_404(User, email=client_email)
+        # for securtiy reasons, delete all previous password reset requests
         PasswordResetRequest.objects.filter(user=user).delete()
         password_reset_token = user.create_password_request()
         password_reset_token.send_password_reset_confirmation_email(request)

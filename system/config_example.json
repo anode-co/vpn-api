@@ -1,9 +1,10 @@
 {
 	"email": {
+		"backend": "django.core.mail.backends.smtp.EmailBackend",
 		"host": "stmp.google.com",
 		"username": "email@example.com",
 		"password": "super secret password",
-		"port": 587,
+		"port": 25,
 		"useTLS": true
 	}
 }
