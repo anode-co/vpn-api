@@ -13,13 +13,15 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import os
 import json
 
-AUX_SETTING_FILE = 'system/config.json'
-aux_settings = {}
-with open(AUX_SETTING_FILE, 'r') as aux_config:
-    aux_settings = json.loads(aux_config.read())
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+AUX_SETTING_FILE = os.path.join(BASE_DIR, 'system/config.json')
+
+aux_settings = {}
+with open(AUX_SETTING_FILE, 'r') as aux_config:
+    aux_settings = json.loads(aux_config.read())
 
 
 # Quick-start development settings - unsuitable for production

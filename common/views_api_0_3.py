@@ -612,4 +612,3 @@ class CreateResetPasswordRequestApiView(GenericAPIView):
         password_reset_token.password_reset_status_url = password_reset_token.get_password_reset_status_url(request)
         serializer = self.serializer_class(password_reset_token)
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
-
