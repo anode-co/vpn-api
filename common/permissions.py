@@ -1,6 +1,6 @@
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.core.exceptions import PermissionDenied, SuspiciousOperation
+from django.core.exceptions import PermissionDenied
 import hashlib
 import base64
 from Crypto.Signature import PKCS1_v1_5
@@ -12,7 +12,7 @@ from .models import PublicKey
 from rest_framework import permissions
 
 
-class HttpDigestVerifier:
+class HttpCavageAuthorizationVerifier:
     """Verify HTTP signatures."""
 
     in_verbose_mode = True
@@ -55,6 +55,12 @@ class HttpDigestVerifier:
         else:
             return False
 
+    def get_rsa256_b64_message_digest(self, request_body, charset):
+        """Create an RSA256 message digest."""
+        expected_digest = hashlib.sha256(request_body).digest()
+        expected_base64_digest = base64.b64encode(expected_digest).decode(charset)
+        return expected_base64_digest
+
     def is_valid(self, raise_exceptions=True):
         """Dispatch the object."""
         self.say("CHECKING HTTP AUTHORIZATION")
@@ -68,14 +74,14 @@ class HttpDigestVerifier:
             if header not in headers:
                 message = "Missing header: {}".format(header)
                 self.say("  " + message)
-                return self.handle_error(SuspiciousOperation(message))
+                return self.handle_error(PermissionDenied(message))
         try:
             content_type, charset_info = headers[self.CONTENT_TYPE_HEADER].split(";")
         except ValueError:
             message = "Could not read charset info"
             self.say("    " + message)
             charset_info = 'encoding=utf-8'
-            # raise SuspiciousOperation
+            # raise PermissionDenied
         charset_title, charset = charset_info.split("=")
         self.say("  charset: {}".format(charset))
         try:
@@ -84,9 +90,9 @@ class HttpDigestVerifier:
             message = "Could not retrieve authorization type"
             self.say(message)
             self.say(headers[self.AUTHORIZATION_HEADER])
-            return self.handle_error(SuspiciousOperation(message))
+            return self.handle_error(PermissionDenied(message))
         if auth_type.lower() != self.AUTH_TYPE:
-            return self.handle_error(SuspiciousOperation("Invalid authorization type. \"Signature\" required"))
+            return self.handle_error(PermissionDenied("Invalid authorization type. \"Signature\" required"))
 
         self.say("  auth_type: {}".format(auth_type))
         self.say("  auth_info: {}".format(auth_info))
@@ -94,7 +100,7 @@ class HttpDigestVerifier:
         try:
             auth_info_keypairs = auth_info.split(',')
         except ValueError:
-            return self.handle_error(SuspiciousOperation("Invalid authorization key parameters"))
+            return self.handle_error(PermissionDenied("Invalid authorization key parameters"))
         auth_infos = {}
         for auth_info_keypair in auth_info_keypairs:
             key, value = auth_info_keypair.split("=", 1)
@@ -108,21 +114,21 @@ class HttpDigestVerifier:
         # https://tools.ietf.org/html/draft-cavage-http-signatures-12
 
         if 'keyId' not in auth_infos:
-            return self.handle_error(SuspiciousOperation("No keyId psecified"))
+            return self.handle_error(PermissionDenied("No keyId psecified"))
         public_key_id = auth_infos['keyId']
 
         if 'algorithm' not in auth_infos:
-            return self.handle_error(SuspiciousOperation("No algorithm specified"))
+            return self.handle_error(PermissionDenied("No algorithm specified"))
         algorithm = auth_infos['algorithm']
 
         if 'signature' not in auth_infos:
-            return self.handle_error(SuspiciousOperation("No signature specified"))
+            return self.handle_error(PermissionDenied("No signature specified"))
         base64_signature = auth_infos['signature']
         try:
             signature = base64.b64decode(base64_signature.encode(charset))
         except LookupError:
             self.say("Could not decode base64 signature")
-            return self.handle_error(SuspiciousOperation("signature could not be base64 decoded"))
+            return self.handle_error(PermissionDenied("signature could not be base64 decoded"))
         self.say("  signature: {}".format(signature))
 
         try:
@@ -136,7 +142,9 @@ class HttpDigestVerifier:
         self.say(request.headers)
         self.say(request.body)
         request_body = request.body
+        request_body_digest = self.get_rsa256_b64_message_digest(request_body, charset).encode(charset)
         self.say("  request_body: {}".format(request_body))
+        self.say("  request_body_digest: {}".format(request_body_digest))
 
         if algorithm not in self.ALGORITHMS:
             self.say("  algorithm not found")
@@ -164,14 +172,14 @@ class HttpDigestVerifier:
             elif algorithm == self.ALGORITHMS_ECDSA_CURVE25519:
                 curve_algorithm = curve.W25519
 
-            is_valid = ecdsa.verify((r, s), request_body, ecdsa_public_key, curve=curve_algorithm)
+            is_valid = ecdsa.verify((r, s), request_body_digest, ecdsa_public_key, curve=curve_algorithm)
             if is_valid is True:
                 self.say("  -- AUTHORIZED  -- ")
                 return True
             else:
                 message = "Could not verify signature"
                 self.say("  " + message)
-                return self.handle_error(SuspiciousOperation(message))
+                return self.handle_error(PermissionDenied(message))
 
         elif algorithm in self.ALGORITHMS_CRYTPO:
             try:
@@ -193,7 +201,7 @@ class HttpDigestVerifier:
                 self.say("  algorithm: SHA256")
                 digest = SHA256.new()
 
-            digest.update(request_body)
+            digest.update(request_body_digest)
             if signer.verify(digest, signature) is False:
                 self.say("Could not verify signature")
                 return self.handle_error(PermissionDenied)
@@ -203,7 +211,7 @@ class HttpDigestVerifier:
         else:
             message = "Algorithm not  supported"
             self.say("  " + message)
-            return self.handle_error(SuspiciousOperation(message))
+            return self.handle_error(PermissionDenied(message))
         return True
 
     def say(self, message):
@@ -246,25 +254,25 @@ class HttpDigestRequiredMixin:
         for header in self.REQUIRED_HEADERS:
             if header not in headers:
                 self.say("  missing header: {}".format(header))
-                raise SuspiciousOperation
+                raise PermissionDenied
         try:
             content_type, charset_info = headers[self.CONTENT_TYPE_HEADER].split(";")
         except ValueError:
             self.say("    could not read charset info")
             charset_info = 'encoding=utf-8'
-            # raise SuspiciousOperation
+            # raise PermissionDenied
         charset_title, charset = charset_info.split("=")
         self.say("  charset: {}".format(charset))
         try:
             digest_algorithm, base64_digest = headers[self.DIGEST_HEADER].split("=", 1)
         except ValueError:
-            raise SuspiciousOperation
+            raise PermissionDenied
         self.say("  digest algorithm: {}".format(digest_algorithm))
         self.say("  b64 encoded digest: {}".format(base64_digest))
         try:
             digest = base64.b64decode(base64_digest.encode(charset)).decode(charset)
         except LookupError:
-            raise SuspiciousOperation
+            raise PermissionDenied
         self.say("  digest: {}".format(digest))
         request_body = request.body
         self.say("  requset body: {}".format(request_body))
@@ -280,11 +288,11 @@ class HttpDigestRequiredMixin:
             test_digest = hashlib.md5(request_body).hexdigest()
         else:
             self.say("  No algorithm found.")
-            raise SuspiciousOperation
+            raise PermissionDenied
         self.say("  message digest: {}".format(test_digest))
         if test_digest != digest:
             self.say("  digests MISMATCH!")
-            raise SuspiciousOperation
+            raise PermissionDenied
         self.say("  digests match!")
         return super().dispatch(request, *args, **kwargs)
 
@@ -319,14 +327,14 @@ class HttpCrypoAuthorizationRequiredMixin:
 
     def dispatch(self, request, *args, **kwargs):
         """Dispatch the object."""
-        digest_verifier = HttpDigestVerifier(request, args, kwargs)
+        digest_verifier = HttpCavageAuthorizationVerifier(request, args, kwargs)
         digest_verifier.is_valid(raise_exceptions=True)
         return super().dispatch(request, *args, **kwargs)
 
         '''
 
         if signature_algorithm != 'ecdsa-sha256':
-            raise SuspiciousOperation
+            raise PermissionDenied
         signature = auth_infos['signature']
 
 
@@ -345,7 +353,7 @@ class HasHttpCrypoAuthorization(permissions.BasePermission):
     def has_permission(self, request, view):
         """Return True if authorization passes signature verification."""
         """Dispatch the object."""
-        digest_verifier = HttpDigestVerifier(request)
+        digest_verifier = HttpCavageAuthorizationVerifier(request)
         digest_verifier.is_valid(raise_exceptions=True)
         return True
 
@@ -406,6 +414,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA512, SHA384, SHA256
 import base64
+import hashlib
 import json
 
 charset = 'utf-8'
@@ -421,10 +430,15 @@ data = {
     "test": "value"
 }
 data_string = json.dumps(data).encode(charset)
+data_string_hash = hashlib.sha256(data_string).digest()
+data_string_b64_hash = base64.b64encode(data_string_hash).decode(charset)
+
+# FIXME
+
 
 signer = PKCS1_v1_5.new(private_key)
 digest = SHA256.new()
-digest.update(data_string)
+digest.update(data_string_b64_hash)
 signature = signer.sign(digest)
 base64_signature = base64.b64encode(signature).decode('utf-8')
 
