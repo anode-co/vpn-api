@@ -23,7 +23,7 @@ from django.utils import timezone
 from .permissions import (
     CsrfExemptMixin,
     HttpDigestRequiredMixin,
-    HttpCrypoAuthorizationRequiredMixin,
+    HttpCjdnsAuthorizationRequiredMixin,
 )
 
 
@@ -39,7 +39,7 @@ class DigestTestApiView(HttpDigestRequiredMixin, GenericAPIView):
         return Response({})
 
 
-class AuthTestApiView(HttpCrypoAuthorizationRequiredMixin, GenericAPIView):
+class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Test Crypto Auth Mixin."""
 
     def get(self, request):
@@ -80,7 +80,7 @@ class RegisterPublicKeyView(CsrfExemptMixin, GenericAPIView):
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
-class CreateAccountApiView(HttpCrypoAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
+class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
     """When a new email address is submitted.
 
     the email address is registered with the system and a unique token
@@ -110,7 +110,7 @@ class CreateAccountApiView(HttpCrypoAuthorizationRequiredMixin, CsrfExemptMixin,
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
-class CreateAccountConfirmationStatusApiView(HttpCrypoAuthorizationRequiredMixin, GenericAPIView):
+class CreateAccountConfirmationStatusApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Check on the status of a password reset process."""
 
     serializer_class = UserAccountConfirmedSerializer
@@ -144,7 +144,7 @@ class CreateAccountConfirmationStatusApiView(HttpCrypoAuthorizationRequiredMixin
         return Response(serializer.data, status=http_status)
 
 
-class CreateResetPasswordRequestApiView(HttpCrypoAuthorizationRequiredMixin, GenericAPIView):
+class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Create a password reset request."""
 
     serializer_class = PasswordResetInitializationSerializer

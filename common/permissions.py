@@ -10,6 +10,106 @@ from fastecdsa import curve, ecdsa
 from fastecdsa.encoding import pem
 from .models import PublicKey
 from rest_framework import permissions
+from cjdnsadmin.cjdnsadmin import connect
+
+
+class HttpCjdnsAuthorizationVerifier:
+    """Verify Cjdns signature."""
+
+    in_verbose_mode = True
+    raise_exceptions = True
+
+    AUTH_TYPE = 'cjdns'
+    AUTHORIZATION_HEADER = 'Authorization'
+    CONTENT_TYPE_HEADER = 'Content-Type'
+    REQUIRED_HEADERS = [
+        AUTHORIZATION_HEADER,
+        CONTENT_TYPE_HEADER,
+    ]
+    ALGORITHMS_CJDNS = 'cjdns'
+    ALGORITHMS = [
+        ALGORITHMS_CJDNS,
+    ]
+
+    CJDNS_IP = '127.0.0.1'
+    CJDNS_PORT = 11234
+    CJDNS_PASSWORD = "NONE"
+
+    def __init__(self, request, *args, **kwargs):
+        """Initialize class."""
+        self.say("In verbose mode")
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+
+    def handle_error(self, exception_type):
+        """Return False or raise exception."""
+        if self.raise_exceptions is True:
+            raise exception_type
+        else:
+            return False
+
+    def get_rsa256_b64_message_digest(self, request_body, charset):
+        """Create an RSA256 message digest."""
+        expected_digest = hashlib.sha256(request_body).digest()
+        expected_base64_digest = base64.b64encode(expected_digest).decode(charset)
+        return expected_base64_digest
+
+    def is_valid(self, raise_exceptions=True):
+        """Dispatch the object."""
+        self.say("CHECKING HTTP AUTHORIZATION")
+        self.raise_exceptions = raise_exceptions
+        request = self.request
+        headers = request.headers
+        print(headers)
+        print('meta:')
+        print(request.META)
+        for header in self.REQUIRED_HEADERS:
+            if header not in headers:
+                message = "Missing header: {}".format(header)
+                self.say("  " + message)
+                return self.handle_error(PermissionDenied(message))
+        try:
+            content_type, charset_info = headers[self.CONTENT_TYPE_HEADER].split(";")
+        except ValueError:
+            message = "Could not read charset info"
+            self.say("    " + message)
+            charset_info = 'encoding=utf-8'
+            # raise PermissionDenied
+        charset_title, charset = charset_info.split("=")
+        self.say("  charset: {}".format(charset))
+        try:
+            auth_type, signature = headers[self.AUTHORIZATION_HEADER].split(' ', 1)
+        except ValueError:
+            message = "Could not retrieve authorization type"
+            self.say(message)
+            self.say(headers[self.AUTHORIZATION_HEADER])
+            return self.handle_error(PermissionDenied(message))
+        if auth_type.lower() != self.AUTH_TYPE:
+            return self.handle_error(PermissionDenied("Invalid authorization type. \"Signature\" required"))
+
+        self.say("  auth_type: {}".format(auth_type))
+        self.say("  auth_info: {}".format(signature))
+
+        # signature = base64.b64decode(base64_signature.encode(charset))
+
+        request_body = request.body
+        request_body_digest = self.get_rsa256_b64_message_digest(request_body, charset).encode(charset)
+        self.say("  request_body: {}".format(request_body))
+        self.say("  request_body_digest: {}".format(request_body_digest))
+
+        cjdns = connect(self.CJDNS_IP, self.CJDNS_PORT, self.CJDNS_PASSWORD)
+        cjdns_response = cjdns.Sign_checkSig(
+            request_body_digest,
+            signature
+        )
+        if cjdns_response[b'error'] == b'none':
+            return True
+
+    def say(self, message):
+        """Print debugging messages."""
+        if self.in_verbose_mode is True:
+            print(message)
 
 
 class HttpCavageAuthorizationVerifier:
@@ -345,6 +445,24 @@ class HttpCrypoAuthorizationRequiredMixin:
         '''
 
 
+class HttpCjdnsAuthorizationRequiredMixin:
+    """Create a Cavage HTTP Authorization Mixin."""
+
+    # should be Signature keyId=<key-id>,algorithm="rsa-sha256",headers="(request-target) date digest",signature=<signature-string>
+    in_verbose_mode = True
+
+    def say(self, message):
+        """Print debugging messages."""
+        if self.in_verbose_mode is True:
+            print(message)
+
+    def dispatch(self, request, *args, **kwargs):
+        """Dispatch the object."""
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request, args, kwargs)
+        digest_verifier.is_valid(raise_exceptions=True)
+        return super().dispatch(request, *args, **kwargs)
+
+
 class HasHttpCrypoAuthorization(permissions.BasePermission):
     """Require Cavage-10 crypto-signed authorization at the method level."""
 
@@ -354,6 +472,19 @@ class HasHttpCrypoAuthorization(permissions.BasePermission):
         """Return True if authorization passes signature verification."""
         """Dispatch the object."""
         digest_verifier = HttpCavageAuthorizationVerifier(request)
+        digest_verifier.is_valid(raise_exceptions=True)
+        return True
+
+
+class HasHttpCjdnsAuthorization(permissions.BasePermission):
+    """Require Cavage-10 crypto-signed authorization at the method level."""
+
+    message = 'HTTP request must be signed with a registered public key'
+
+    def has_permission(self, request, view):
+        """Return True if authorization passes signature verification."""
+        """Dispatch the object."""
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request)
         digest_verifier.is_valid(raise_exceptions=True)
         return True
 
@@ -431,9 +562,10 @@ data = {
 }
 data_string = json.dumps(data).encode(charset)
 data_string_hash = hashlib.sha256(data_string).digest()
-data_string_b64_hash = base64.b64encode(data_string_hash).decode(charset)
+data_string_b64_hash = base64.b64encode(data_string_hash)
 
-# FIXME
+# NOTICE: python encodes     {"test": "value"}
+# NOTICE: JavaScript encodes {"test":"value"}
 
 
 signer = PKCS1_v1_5.new(private_key)
@@ -510,4 +642,47 @@ def verify(message, signature, pub_key):
             return super().dispatch(request, *args, **kwargs)
         else:
             raise PermissionDenied
+'''
+
+
+'''
+# Test CJDNS hash create
+
+from cjdnsadmin.cjdnsadmin import cjdns
+import base64
+import json
+import hashlib
+import requests
+
+cjdns = connect("127.0.0.1", 11234, "NONE")
+
+charset = 'utf-8'
+data = {
+    "test": "value"
+}
+data_string = json.dumps(data).encode(charset)
+data_string_hash = hashlib.sha256(data_string).digest()
+data_string_b64_hash = base64.b64encode(data_string_hash)
+
+
+output = cjdns.Sign_sign(data_string_b64_hash)
+
+if output[b'error'] == b'none':
+    signature = output[b'signature'].decode(charset)
+
+url = 'http://127.0.0.1:8002/api/0.3/tests/auth/'
+headers = {
+    'Content-Type': 'application/json; encoding=utf-8',
+    'Authorization': 'cjdns {}'.format(signature)
+}
+response = requests.post(url, json=data, headers=headers)
+
+Sign_sign("yabba-dabba-doooo")'
+{
+  "error": "none",
+  "signature": "0ytl2njc1hy86tlxtc2zc3449up47uqb0u04kcy233d7zrn2cwh1_1ggrny99st550czt4x84cqpgtr0g0fguq3q7jcyry9nlbjrg9hxg9006s034gp5grnundwkp48dbysb154zln18ym28tnwh9t1qjq40",
+  "txid": "801605211"
+}
+
+
 '''

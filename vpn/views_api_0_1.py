@@ -21,7 +21,7 @@ from common.serializers_0_3 import (
     GenericResponseSerializer
 )
 from drf_yasg.utils import swagger_auto_schema
-from common.permissions import CsrfExemptMixin, HasHttpCrypoAuthorization
+from common.permissions import CsrfExemptMixin, HasHttpCjdnsAuthorization
 
 
 class PermissionsPerMethodMixin(object):
@@ -103,7 +103,7 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
 
     @action(detail=False, methods=['post'])
     @swagger_auto_schema(responses={400: 'Invalid request'})
-    @permission_classes((HasHttpCrypoAuthorization,))
+    @permission_classes((HasHttpCjdnsAuthorization,))
     def post(self, request, client_os):
         """Register a new clent software version.
 
@@ -129,7 +129,7 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     pagination_class = LimitOffsetPagination
 
     @swagger_auto_schema(responses={400: 'Invalid request'})
-    @permission_classes((HasHttpCrypoAuthorization,))
+    @permission_classes((HasHttpCjdnsAuthorization,))
     def create(self, request):
         """Add new VPN server.
 
