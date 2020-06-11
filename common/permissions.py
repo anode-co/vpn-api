@@ -175,7 +175,13 @@ class HttpDigestVerifier:
 
         elif algorithm in self.ALGORITHMS_CRYTPO:
             try:
-                rsa_public_key = RSA.importKey(public_key.public_key)
+                public_key_string = public_key.public_key
+                # Add  \n every 64 characters if they don't exist
+                if (public_key_string[91] != '\n'):
+                    public_key_string = public_key_string[27:-25]
+                    block_length = 64
+                    public_key_string = '-----BEGIN PUBLIC KEY-----\n' + '\n'.join(public_key_string[i:i + block_length] for i in range(0, len(public_key_string), block_length)) + '\n-----END PUBLIC KEY-----'
+                rsa_public_key = RSA.importKey(public_key_string)
                 self.say("exported public key: {}".format(rsa_public_key.exportKey().decode('utf-8')))
             except Exception:
                 return self.handle_error(PermissionDenied)
