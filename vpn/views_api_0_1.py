@@ -95,7 +95,7 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
         Get information about the latest client app version for an OS.
         """
         if client_cpu_architecture is None or client_cpu_architecture == 'all':
-            software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', 'revision_number').first()
+            software_version = self.get_queryset().filter(client_os=client_os).order_by('-major_number', '-minor_number', '-revision_number').first()
         else:
             software_version = self.get_queryset().filter(client_os=client_os, client_cpu_architecture=client_cpu_architecture).order_by('-major_number', '-minor_number', 'revision_number').first()
         if software_version is None:
