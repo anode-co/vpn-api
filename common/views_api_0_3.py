@@ -150,7 +150,7 @@ class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
     serializer_class = PasswordResetInitializationSerializer
 
     @swagger_auto_schema(responses={200: PasswordResetConfirmedSerializer, 202: PasswordResetPendingSerializer, 404: 'Not Found'})
-    def get(self, request, client_email):
+    def get(self, request, app_secret_token):
         """Check the status of a password reset request.
 
         (REQUIRES AUTHORIZATION). When the user goes to the web page provided in the password reset
@@ -162,7 +162,7 @@ class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
         be destroyed.
         """
         now = timezone.now()
-        password_reset_token = PasswordResetRequest.objects.select_related('user').filter(user__email=client_email, expires_on__gt=now).order_by('-created_at').first()
+        password_reset_token = PasswordResetRequest.objects.select_related('user').filter(user__app_secret_token=app_secret_token, expires_on__gt=now).order_by('-created_at').first()
         if password_reset_token is None:
             raise Http404
         http_status = status.HTTP_201_CREATED
@@ -171,22 +171,22 @@ class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
             http_status = status.HTTP_200_OK
             output = {'status': 'complete', 'app_secret_token': password_reset_token.user.app_secret_token}
             # for security reasons, delete any related PasswordResetRequests
-            PasswordResetRequest.objects.filter(user__email=client_email).delete()
+            PasswordResetRequest.objects.filter(user__app_secret_token=app_secret_token).delete()
         serializer = PasswordResetConfirmedSerializer(data=output)
         serializer.is_valid()
         return Response(serializer.data, status=http_status)
 
     @swagger_auto_schema(responses={201: PasswordResetInitializationSerializer, 404: 'Not Found'}, request_body=None)
-    def post(self, request, client_email):
+    def post(self, request, app_secret_token):
         """Initialize a password reset request.
 
         (REQUIRES AUTHORIZATION). When password registration request is created, the user of
-        <client_email> is sent a confirmation email as a
+        who owns <app_secret_token> is sent a confirmation email as a
         two factor authentication. The user must confirm their email
         in  order to release the appSecretKey to the VPN app, which
         can be used to decrypt the app wallet and change the password.
         """
-        user = get_object_or_404(User, email=client_email)
+        user = get_object_or_404(User, app_secret_token=app_secret_token)
         # for securtiy reasons, delete all previous password reset requests
         PasswordResetRequest.objects.filter(user=user).delete()
         password_reset_token = user.create_password_request()

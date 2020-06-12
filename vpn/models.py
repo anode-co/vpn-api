@@ -133,6 +133,7 @@ pre_save.connect(ClientSoftwareVersion.pre_save, sender=ClientSoftwareVersion)
 class CjdnsVpnServer(models.Model):
     """Cjdns VPN Server."""
 
+    AUTHORIZATION_ENDPOINT = '/api/0.3/server/authorize/'
     COUNTRIES = [
         ('AF', _('Afghanistan')),
         ('AX', _('Åland Islands')),

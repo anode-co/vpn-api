@@ -10,5 +10,5 @@ app_name = 'common_api_0_3_account_management'
 urlpatterns = [
     path('vpn/accounts/', CreateAccountApiView.as_view(), name="Register New Client Account"),
     path('vpn/accounts/<client_email>/confirmstatus/', CreateAccountConfirmationStatusApiView.as_view(), name="check_account_registration_confirmation"),
-    path('vpn/accounts/<client_email>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
+    path('vpn/accounts/<app_secret_token>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
 ]

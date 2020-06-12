@@ -201,7 +201,7 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
         }
         url = "{}{}".format(
             vpn_server.authorization_server_url,
-            '/authorize/'
+            vpn_server.AUTHORIZATION_ENDPOINT
         )
 
         response_status = status.HTTP_400_BAD_REQUEST
