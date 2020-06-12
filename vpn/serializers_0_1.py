@@ -154,7 +154,7 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
     """Serialize a CjdnsVpnServer."""
 
     network_settings = CjdnsVpnNetworkSettingsSerializer()
-    peering_lines = CjdnsVpnServerPeeringLineSerializer(many=True)
+    # peering_lines = CjdnsVpnServerPeeringLineSerializer(many=True)
 
     class Meta:
         """Meta information for the serializer."""
@@ -167,7 +167,7 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
             'region',
             'country_code',
             'network_settings',
-            'peering_lines',
+            # 'peering_lines',
             'online_since_datetime',
             'last_seen_datetime',
             'is_fake'

@@ -131,6 +131,7 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
     serializer_class = CjdnsVPNServerSerializer
     pagination_class = LimitOffsetPagination
+    lookup_field = 'public_key'
 
     @swagger_auto_schema(responses={400: 'Invalid request'})
     @permission_classes((HasHttpCjdnsAuthorization,))
