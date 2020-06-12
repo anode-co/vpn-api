@@ -42,12 +42,13 @@ urlpatterns += [
     path('api/0.3/vpn/', include('vpn.urls_api_0_3_servers', namespace="Servers")),
     path('api/0.3/', include('common.urls_api_0_3_account_management', namespace="Account Management")),
     path('api/0.3/', include('common.urls_api_0_3_authorization', namespace="Authorization")),
+    path('api/0.3/', include('common.urls_api_0_3_coordinator', namespace="Coordinator")),
 ]
 
 schema_view = get_schema_view(
     openapi.Info(
         title="Anode VPN API",
-        default_version="v0.2",
+        default_version="v0.3",
         description="In-development API for Anode VPN clients",
         terms_of_service="",
         contact=openapi.Contact(email="adonis@anode.co"),

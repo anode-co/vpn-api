@@ -4,7 +4,6 @@ from .models import (
     PasswordResetRequest,
     PublicKey,
 )
-from rest_framework.validators import UniqueValidator
 
 
 class GenericResponseSerializer(serializers.Serializer):
@@ -149,6 +148,18 @@ class PublicKeyOutputSerializer(serializers.ModelSerializer):
         model = PublicKey
         fields = [
             'public_key_id',
+        ]
+
+
+class CanonicalPublicKeyOutputSerializer(serializers.ModelSerializer):
+    """Serialize an outbound public key."""
+
+    class Meta:
+        """Meta information."""
+
+        model = PublicKey
+        fields = [
+            'public_key',
         ]
 
 

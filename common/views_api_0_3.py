@@ -6,6 +6,7 @@ from django.http import Http404
 from .models import (
     User,
     PasswordResetRequest,
+    PublicKey,
 )
 from .serializers_0_3 import (
     UserEmailSerializer,
@@ -17,6 +18,7 @@ from .serializers_0_3 import (
     UserAccountCreatedSerializer,
     UserAccountConfirmedSerializer,
     UserAccountPendingSerializer,
+    CanonicalPublicKeyOutputSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -49,6 +51,27 @@ class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     def post(self, request):
         """GET method."""
         return Response(request.data)
+
+
+class GetCoordinatorPublicKeyApiView(GenericAPIView):
+    """Get this server's public key.
+
+    This server has a public  key used for cjdns and for encrypted messages
+    This endpoint provides that public key.
+    """
+
+    serializer_class = CanonicalPublicKeyOutputSerializer
+
+    @swagger_auto_schema(responses={200: CanonicalPublicKeyOutputSerializer})
+    def get(self, request):
+        """Get this server's public key.
+
+        This server has a public  key used for cjdns and for encrypted messages
+        This endpoint provides that public key.
+        """
+        public_key = get_object_or_404(PublicKey, public_key_id='coordinator')
+        output_serializer = self.get_serializer(public_key)
+        return Response(output_serializer.data)
 
 
 class RegisterPublicKeyView(CsrfExemptMixin, GenericAPIView):
