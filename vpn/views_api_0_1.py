@@ -17,9 +17,7 @@ from .serializers_0_1 import (
     VpnClientEventSerializer,
     ClientSoftwareVersionSerializer,
     CjdnsVPNServerSerializer,
-)
-from common.serializers_0_3 import (
-    GenericResponseSerializer
+    VpnServerResponseSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from common.permissions import (
@@ -178,7 +176,7 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
     """Authorize a Client public key."""
 
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
-    serializer_class = GenericResponseSerializer
+    serializer_class = VpnServerResponseSerializer
     AUTHORIZATION_URL_TIMEOUT_S = 3
 
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})

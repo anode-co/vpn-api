@@ -11,6 +11,15 @@ from .models import (
 )
 
 
+class VpnServerResponseSerializer(serializers.Serializer):
+    """Serialize the VPN Server response."""
+
+    status = serializers.CharField()
+    message = serializers.CharField()
+    expires_at = serializers.IntegerField()
+    date = serializers.IntegerField()
+
+
 class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSerializer):
     """Serializer for the VpnClientEvent model."""
 
