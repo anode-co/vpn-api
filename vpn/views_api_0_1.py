@@ -1,7 +1,8 @@
 import json
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import GenericAPIView
-from rest_framework.decorators import action, permission_classes
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
@@ -28,15 +29,25 @@ from common.serializers_0_3 import GenericResponseSerializer
 from rest_framework_api_key.permissions import HasAPIKey
 
 
-class PermissionsPerMethodMixin(object):
-    """Give permissions per method."""
-
-    def get_permissions(self):
-        """Allows overriding default permissions with @permission_classes."""
-        view = getattr(self, self.action)
-        if hasattr(view, 'permission_classes'):
-            return [permission_class() for permission_class in view.permission_classes]
-        return super().get_permissions()
+def method_permission_classes(classes):
+    """Custom method decorator to allow for per-method permissions."""
+    def decorator(func):
+        """Create a method decorater."""
+        def decorated_func(self, *args, **kwargs):
+            """Apply the decorator function."""
+            print(self.request)
+            print(self.request.headers)
+            self.permission_classes = classes
+            print("permission classes")
+            print(classes)
+            # this call is needed for request permissions
+            self.check_permissions(self.request)
+            result = func(self, *args, **kwargs)
+            print("result")
+            print(result)
+            return result
+        return decorated_func
+    return decorator
 
 
 class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
@@ -89,6 +100,7 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
 
     queryset = ClientSoftwareVersion.objects.filter(is_active=True)
     serializer_class = ClientSoftwareVersionSerializer
+    permission_classes = [AllowAny]
 
     @swagger_auto_schema(responses={404: 'client_os not found'})
     def get(self, request, client_os, client_cpu_architecture=None):
@@ -105,9 +117,8 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
         serializer = self.get_serializer(software_version)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'])
     @swagger_auto_schema(responses={400: 'Invalid request', 201: GenericResponseSerializer})
-    @permission_classes((HasAPIKey,))
+    @method_permission_classes((HasAPIKey,))
     def post(self, request, client_os):
         """Register a new clent software version.
 
@@ -136,7 +147,7 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     lookup_field = 'public_key'
 
     @swagger_auto_schema(responses={400: 'Invalid request'})
-    @permission_classes((HasHttpCjdnsAuthorization,))
+    @method_permission_classes((HasHttpCjdnsAuthorization,))
     def create(self, request):
         """Add new VPN server.
 

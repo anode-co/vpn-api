@@ -23,6 +23,17 @@ Must have a restart loop in /etc/crontab in case cjdns crashes:
 """
 
 
+class PermissionsPerMethodMixin(object):
+    """Grat per-method permissions on a view."""
+
+    def get_permissions(self):
+        """Allows overriding default permissions with @permission_classes."""
+        view = getattr(self, self.action)
+        if hasattr(view, 'permission_classes'):
+            return [permission_class() for permission_class in view.permission_classes]
+        return super().get_permissions()
+
+
 class CjdnsMessageSigner:
     """Sign messages using the cjdns signer."""
 
