@@ -1,5 +1,4 @@
 import json
-import requests
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import GenericAPIView
 from rest_framework.decorators import action, permission_classes
@@ -24,7 +23,6 @@ from common.permissions import (
     CsrfExemptMixin,
     HasHttpCjdnsAuthorization,
     HttpCjdnsAuthorizationRequiredMixin,
-    CjdnsMessageSigner,
 )
 
 
@@ -181,39 +179,27 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
     AUTHORIZATION_URL_TIMEOUT_S = 3
 
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
-    def get(self, request, server_public_key):
+    def get(self, request, public_key):
         """Authorize client on a VPN.
 
         Request that a VPN authorize and create routes for a client public key.
         The client that signed the HTTP request will be the one authorized.
         """
-        vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
-        # TODO: run a connect to an API on the VPN server to authorize the client public key
-        request_data = {
-            'publicKey': self.auth_verified_cjdns_public_key
-        }
-        charset = 'utf-8'
-        signer = CjdnsMessageSigner()
-        signature = signer.sign(json.dumps(request_data), charset)
-        headers = {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Authorization': 'cjdns {}'.format(signature)
-        }
-        url = "{}{}".format(
-            vpn_server.authorization_server_url,
-            vpn_server.AUTHORIZATION_ENDPOINT
-        )
-
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=public_key)
         response_status = status.HTTP_400_BAD_REQUEST
         response = {
             'status': '',
             'message': ''
         }
         try:
-            request_response = requests.post(url, json=request_data, headers=headers, timeout=self.AUTHORIZATION_URL_TIMEOUT_S)
+            request_response = vpn_server.get_api_request_authorization(self.auth_verified_cjdns_public_key)
+            print(request_response)
+            print(request_response.text)
+            print(request_response.json())
             try:
                 json_response = request_response.json()
-                response_status = json_response.status_code
+                json_response['expires_at'] = json_response['expiresAt']
+                response_status = request_response.status_code
                 response = json_response
             except json.decoder.JSONDecodeError:
                 response_status = status.HTTP_400_BAD_REQUEST

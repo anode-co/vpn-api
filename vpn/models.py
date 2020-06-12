@@ -2,7 +2,11 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
 from django.db.models.signals import pre_save
-from django.core.validators import MinValueValidator 
+from django.core.validators import MinValueValidator
+import json
+import requests
+from django.utils import timezone
+from common.permissions import CjdnsMessageSigner
 
 
 class VpnClientEvent(models.Model):
@@ -401,6 +405,37 @@ class CjdnsVpnServer(models.Model):
     is_fake = models.BooleanField(default=False)
 
     _network_settings = None
+
+    def secure_api_request(self, url, data):
+        """Make an API call to the server."""
+        charset = 'utf-8'
+        url = "{}{}".format(
+            self.authorization_server_url,
+            self.AUTHORIZATION_ENDPOINT
+        )
+        print(data)
+        print("from server: {}".format(url))
+        if data is None:
+            data_string = ''
+        else:
+            data_string = json.dumps(data, separators=(',', ':'))
+        signer = CjdnsMessageSigner()
+        signature = signer.sign(data_string, charset)
+        headers = {
+            'Content-Type': 'application/json; encoding=utf-8',
+            'Authorization': 'cjdns {}'.format(signature)
+        }
+        response = requests.post(url, data=data_string, headers=headers)
+        return response
+
+    def get_api_request_authorization(self, client_public_key):
+        """Get an authorization request."""
+        print("asking to authorize {}".format(client_public_key))
+        data = {
+            'clientPublicKey': client_public_key,
+            'date': round(timezone.now().timestamp())
+        }
+        return self.secure_api_request(self.AUTHORIZATION_ENDPOINT, data)
 
     @property
     def network_settings(self):

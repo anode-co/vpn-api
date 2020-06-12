@@ -16,8 +16,7 @@ class VpnServerResponseSerializer(serializers.Serializer):
 
     status = serializers.CharField()
     message = serializers.CharField()
-    expires_at = serializers.IntegerField()
-    date = serializers.IntegerField()
+    expires_at = serializers.IntegerField(allow_null=True)
 
 
 class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSerializer):
