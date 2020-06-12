@@ -17,6 +17,7 @@ class UserEmailSerializer(serializers.Serializer):
     """Serialize the email field of the User."""
 
     email = serializers.EmailField()
+    username = serializers.CharField()
 
     def validate_email(self, email):
         """Validate the email field."""
@@ -28,11 +29,23 @@ class UserEmailSerializer(serializers.Serializer):
             pass
         return email
 
+    def validate_username(self, username):
+        """Validate the email field."""
+        try:
+            user = User.objects.get(username=username)
+            if user.is_confirmed:
+                raise serializers.ValidationError("This username address is already registered")
+        except User.DoesNotExist:
+            pass
+        return username
+
     def save(self, commit=True):
         """Save the User."""
         email = self.validated_data['email']
+        username = self.validated_data['username']
         try:
             user = User.objects.get(email=email)
+            user = User.objects.get(username=username)
         except User.DoesNotExist:
             user = User.objects.create(**self.validated_data)
             if commit is True:
@@ -48,7 +61,8 @@ class UserAccountCreatedSerializer(serializers.ModelSerializer):
 
         model = User
         fields = [
-            'account_confirmation_status_url'
+            'account_confirmation_status_url',
+            'password_recovery_token'
         ]
 
 
@@ -63,7 +77,7 @@ class UserAccountConfirmedSerializer(serializers.Serializer):
     ]
 
     status = serializers.ChoiceField(choices=STATUS_CHOICES)
-    app_secret_token = serializers.CharField(allow_blank=True, allow_null=True)
+    backup_wallet_password = serializers.CharField(allow_blank=True, allow_null=True)
 
 
 class UserAccountPendingSerializer(serializers.Serializer):
@@ -103,7 +117,7 @@ class PasswordResetConfirmedSerializer(serializers.Serializer):
     ]
 
     status = serializers.ChoiceField(choices=STATUS_CHOICES)
-    app_secret_token = serializers.CharField(allow_blank=True, allow_null=True)
+    backup_wallet_password = serializers.CharField(allow_blank=True, allow_null=True)
 
 
 class UserPublicKeySerializer(serializers.ModelSerializer):

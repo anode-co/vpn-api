@@ -24,6 +24,8 @@ from common.permissions import (
     HasHttpCjdnsAuthorization,
     HttpCjdnsAuthorizationRequiredMixin,
 )
+from common.serializers_0_3 import GenericResponseSerializer
+from rest_framework_api_key.permissions import HasAPIKey
 
 
 class PermissionsPerMethodMixin(object):
@@ -104,8 +106,8 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
-    @swagger_auto_schema(responses={400: 'Invalid request'})
-    @permission_classes((HasHttpCjdnsAuthorization,))
+    @swagger_auto_schema(responses={400: 'Invalid request', 201: GenericResponseSerializer})
+    @permission_classes((HasAPIKey,))
     def post(self, request, client_os):
         """Register a new clent software version.
 
@@ -116,11 +118,13 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        response = {
+        output = {
             'status': 'success',
             'detail': 'version added for {}'.format(client_os)
         }
-        return Response(response, status.HTTP_201_CREATED)
+        serializer = GenericResponseSerializer(data=output)
+        serializer.is_valid()
+        return Response(serializer.data, status.HTTP_201_CREATED)
 
 
 class CjdnsVpnServerRestApiView(ModelViewSet):

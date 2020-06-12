@@ -9,12 +9,19 @@ from .models import (
 from django.contrib import admin
 
 
+class PasswordResetRequestAdminInline(admin.TabularInline):
+    """Inline Password Reset Requests."""
+
+    model = PasswordResetRequest
+    fields = ('password_reset_token', 'expires_on', 'is_complete')
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     """Define admin model for custom User model with no email field."""
 
     fieldsets = (
-        (None, {'fields': ('email', 'public_key_id', 'public_key', 'is_confirmed', 'is_app_secret_seen', 'confirmation_code', 'app_secret_token', 'password')}),
+        (None, {'fields': ('email', 'public_key_id', 'public_key', 'is_confirmed', 'is_backup_wallet_password_seen', 'confirmation_code', 'password_recovery_token', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser',
                                        'groups', 'user_permissions')}),
@@ -29,6 +36,7 @@ class UserAdmin(DjangoUserAdmin):
     list_display = ('email', 'first_name', 'last_name', 'is_staff')
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
+    inlines = [PasswordResetRequestAdminInline, ]
 
 
 @admin.register(PasswordResetRequest)

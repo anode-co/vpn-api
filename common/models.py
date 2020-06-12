@@ -59,7 +59,7 @@ class UserManager(UserManager):
 class User(AbstractUser):
     """Custom User."""
 
-    username = None
+    username = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(_('Email address'), unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
@@ -68,9 +68,10 @@ class User(AbstractUser):
     public_key = models.CharField(max_length=150, null=True, blank=True)
     private_key = models.CharField(max_length=64, null=True, blank=True)
     is_confirmed = models.BooleanField(default=False)
-    is_app_secret_seen = models.BooleanField(default=False)
+    is_backup_wallet_password_seen = models.BooleanField(default=False)
     confirmation_code = models.CharField(max_length=64, null=True, blank=True)
-    app_secret_token = models.CharField(max_length=65, null=True, blank=True)
+    password_recovery_token = models.CharField(max_length=65, null=True, blank=True)
+    backup_wallet_password = models.CharField(max_length=65, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
 
     account_confirmation_status_url = None
@@ -110,27 +111,37 @@ class User(AbstractUser):
     def confirm_account(self):
         """Confirm account."""
         self.is_confirmed = True
-        self.generate_app_secret_token(commit=False)
+        self.generate_backup_wallet_password(commit=False)
         self.save()
 
-    def set_app_secret_seen(self):
+    def set_backup_wallet_password_seen(self):
         """Confirm account."""
-        self.is_app_secret_seen = True
+        self.is_backup_wallet_password_seen = True
         self.save()
+
+    def generate_random_string(self, length):
+        """Generate a confirmation code."""
+        alphabet = string.digits + string.ascii_lowercase + string.ascii_uppercase
+        return ''.join(random.choice(alphabet) for i in range(length))
 
     def generate_confirmation_code(self, commit=True):
         """Generate a confirmation code."""
-        token_length = 32
-        alphabet = string.digits + string.ascii_lowercase
-        self.confirmation_code = ''.join(random.choice(alphabet) for i in range(token_length))
+        token_length = 64
+        self.confirmation_code = self.generate_random_string(token_length)
         if commit is True:
             self.save()
 
-    def generate_app_secret_token(self, commit=True):
+    def generate_password_recovery_token(self, commit=True):
         """Generate a confirmation code."""
         token_length = 64
-        alphabet = string.digits + string.ascii_lowercase + string.ascii_uppercase
-        self.app_secret_token = ''.join(random.choice(alphabet) for i in range(token_length))
+        self.password_recovery_token = self.generate_random_string(token_length)
+        if commit is True:
+            self.save()
+
+    def generate_backup_wallet_password(self, commit=True):
+        """Generate a confirmation code."""
+        token_length = 64
+        self.backup_wallet_password = self.generate_random_string(token_length)
         if commit is True:
             self.save()
 
@@ -168,8 +179,10 @@ class User(AbstractUser):
             instance.private_key = Utilities.to_base32(private_key)
         if instance.public_key_id is None:
             instance.public_key_id = "{}-{}".format(instance.public_key[:10], instance.id)
-        if instance.is_confirmed is True and instance.app_secret_token is None:
-            instance.generate_app_secret_token(commit=False)
+        if instance.is_confirmed is True and instance.backup_wallet_password is None:
+            instance.generate_backup_wallet_password(commit=False)
+        if instance.password_recovery_token is None:
+            instance.generate_password_recovery_token(commit=False)
 
 
 pre_save.connect(User.pre_save, sender=User)
@@ -223,7 +236,7 @@ class PasswordResetRequest(models.Model):
 
     def get_password_reset_status_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common_api_0_3_account_management:password_reset', kwargs={'app_secret_token': self.user.app_secret_token}))
+        return request.build_absolute_uri(reverse('common_api_0_3_account_management:password_reset', kwargs={'password_recovery_token': self.user.password_recovery_token}))
 
     def get_password_reset_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
