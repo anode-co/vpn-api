@@ -19,9 +19,9 @@ class VpnClientEventAdmin(admin.ModelAdmin):
 class CjdnsVpnServerAdmin(admin.ModelAdmin):
     """Admin represtation of CjdnsVpnServer."""
 
-    list_display = ('name', 'public_key', 'is_approved', 'is_active', 'online_since_datetime', 'last_seen_datetime')
-    ordering = ('is_active', 'is_approved', 'last_seen_datetime', 'online_since_datetime', 'name', 'public_key')
-    list_filter = ('is_active', 'is_approved', 'online_since_datetime', 'last_seen_datetime')
+    list_display = ('name', 'public_key', 'is_approved', 'is_active', 'is_fake', 'online_since_datetime', 'last_seen_datetime')
+    ordering = ('is_fake', 'is_active', 'is_approved', 'last_seen_datetime', 'online_since_datetime', 'name', 'public_key')
+    list_filter = ('is_fake', 'is_active', 'is_approved', 'online_since_datetime', 'last_seen_datetime')
     search_fields = ('public_key', 'name')
     actions = ['approve_vpns', ]
 

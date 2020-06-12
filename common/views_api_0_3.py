@@ -50,6 +50,7 @@ class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
 
     def post(self, request):
         """GET method."""
+        request.data['publicKey'] = self.auth_verified_cjdns_public_key
         return Response(request.data)
 
 

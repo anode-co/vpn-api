@@ -178,19 +178,20 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
     """Authorize a Client public key."""
 
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
-    serializer = GenericResponseSerializer
+    serializer_class = GenericResponseSerializer
     AUTHORIZATION_URL_TIMEOUT_S = 3
 
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
-    def get(self, request, server_public_key, client_public_key):
+    def get(self, request, server_public_key):
         """Authorize client on a VPN.
 
         Request that a VPN authorize and create routes for a client public key.
+        The client that signed the HTTP request will be the one authorized.
         """
         vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
         # TODO: run a connect to an API on the VPN server to authorize the client public key
         request_data = {
-            'publicKey': client_public_key
+            'publicKey': self.auth_verified_cjdns_public_key
         }
         charset = 'utf-8'
         signer = CjdnsMessageSigner()
@@ -211,33 +212,20 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
         }
         try:
             request_response = requests.post(url, json=request_data, headers=headers, timeout=self.AUTHORIZATION_URL_TIMEOUT_S)
-        except requests.exceptions.Timeout:
+            try:
+                json_response = request_response.json()
+                response_status = json_response.status_code
+                response = json_response
+            except json.decoder.JSONDecodeError:
+                response_status = status.HTTP_400_BAD_REQUEST
+                response['status'] = 'error'
+                response['message'] = 'Invalid request'
+        except Exception:
             response_status = status.HTTP_408_REQUEST_TIMEOUT
             response['status'] = 'error'
             response['message'] = 'VPN server timed out.'
-            serializer = self.get_serializer(data=response)
-            return Response(serializer.data, status=response_status)
-
-        try:
-            json_response = request_response.json()
-            if request_response.status_code == 200:
-                response_status = status.HTTP_200_OK
-                response['status'] = 'success'
-                response['message'] = 'Public key "{}" was authorized'.format(client_public_key)
-            elif request_response.status_code == 201:
-                response_status = status.HTTP_201_CREATED
-                response['status'] = 'success'
-                response['message'] = 'Public key "{}" was authorized'.format(client_public_key)
-            else:
-                response_status = status.HTTP_401_UNAUTHORIZED
-                response['status'] = 'error'
-                response['message'] = json_response['message']
-        except json.decoder.JSONDecodeError:
-            response_status = status.HTTP_400_BAD_REQUEST
-            response['status'] = 'error'
-            response['message'] = 'Invalid request'
-
         serializer = self.get_serializer(data=response)
+        serializer.is_valid()
         return Response(serializer.data, status=response_status)
 
 

@@ -138,8 +138,15 @@ class HttpCjdnsAuthorizationVerifier:
             request_body_digest,
             signature
         )
+        print(cjdns_response)
+        self.public_key = None
         if cjdns_response[b'error'] == b'none':
+            public_key = cjdns_response[b'pubkey'].decode('utf-8')
+            self.public_Key = public_key
             return True
+        else:
+            message = "Invalid signature"
+            return self.handle_error(PermissionDenied(message))
 
     def say(self, message):
         """Print debugging messages."""
@@ -495,6 +502,7 @@ class HttpCjdnsAuthorizationRequiredMixin:
         """Dispatch the object."""
         digest_verifier = HttpCjdnsAuthorizationVerifier(request, args, kwargs)
         digest_verifier.is_valid(raise_exceptions=True)
+        self.auth_verified_cjdns_public_key = digest_verifier.public_key
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -521,6 +529,7 @@ class HasHttpCjdnsAuthorization(permissions.BasePermission):
         """Dispatch the object."""
         digest_verifier = HttpCjdnsAuthorizationVerifier(request)
         digest_verifier.is_valid(raise_exceptions=True)
+        self.auth_verified_cjdns_public_key = digest_verifier.public_key
         return True
 
 
