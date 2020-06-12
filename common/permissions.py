@@ -12,6 +12,41 @@ from .models import PublicKey
 from rest_framework import permissions
 from cjdnsadmin.cjdnsadmin import connect
 
+"""
+This tool only works if cjdns is installed and running
+Must run the crashey branch to support signatures
+
+Must be connected to at least one peer to create a valid IP lease
+Must have a restart loop in /etc/crontab in case cjdns crashes:
+
+* * * * * ps -ef | grep -v grep | grep -v test | grep -q cjdroute || /home/user/cjdns/cjdroute < /etc/cjdroute.conf
+"""
+
+
+class CjdnsMessageSigner:
+    """Sign messages using the cjdns signer."""
+
+    CJDNS_IP = '127.0.0.1'
+    CJDNS_PORT = 11234
+    CJDNS_PASSWORD = "NONE"
+
+    def __init__(self):
+        """Initialize the signer."""
+        pass
+
+    def sign(self, s, charset):
+        """Sign string message using cjdns."""
+        s_hash = hashlib.sha256(s.encode(charset)).digest()
+        b64_hash = base64.b64encode(s_hash)
+        cjdns = connect(self.CJDNS_IP, self.CJDNS_PORT, self.CJDNS_PASSWORD)
+        cjdns_result = cjdns.Sign_sign(b64_hash)
+        if cjdns_result[b'error'] == b'none':
+            encoded_signature = cjdns_result[b'signature']
+            signature = encoded_signature.decode('utf-8')
+            return signature
+        else:
+            raise Exception(cjdns_result[b'error'].decode('utf-8'))
+
 
 class HttpCjdnsAuthorizationVerifier:
     """Verify Cjdns signature."""

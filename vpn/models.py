@@ -387,6 +387,9 @@ class CjdnsVpnServer(models.Model):
 
     name = models.CharField(max_length=64)
     public_key = models.CharField(max_length=64)
+    cjdns_public_ip = models.CharField(max_length=40)
+    cjdns_public_port = models.PositiveSmallIntegerField(default=6332)
+    authorization_server_url = models.CharField(max_length=500)
     bandwidth_bps = models.BigIntegerField(validators=[MinValueValidator(1)], null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_approved = models.BooleanField(default=False)

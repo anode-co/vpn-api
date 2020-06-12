@@ -1,4 +1,5 @@
 import json
+import requests
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import GenericAPIView
 from rest_framework.decorators import action, permission_classes
@@ -21,7 +22,12 @@ from common.serializers_0_3 import (
     GenericResponseSerializer
 )
 from drf_yasg.utils import swagger_auto_schema
-from common.permissions import CsrfExemptMixin, HasHttpCjdnsAuthorization
+from common.permissions import (
+    CsrfExemptMixin,
+    HasHttpCjdnsAuthorization,
+    HttpCjdnsAuthorizationRequiredMixin,
+    CjdnsMessageSigner,
+)
 
 
 class PermissionsPerMethodMixin(object):
@@ -168,11 +174,12 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
     '''
 
 
-class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):
+class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Authorize a Client public key."""
 
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
     serializer = GenericResponseSerializer
+    AUTHORIZATION_URL_TIMEOUT_S = 3
 
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
     def get(self, request, server_public_key, client_public_key):
@@ -180,14 +187,58 @@ class CjdnsVpnServerAuthorizationRestApiView(GenericAPIView):
 
         Request that a VPN authorize and create routes for a client public key.
         """
-        get_object_or_404(self.get_queryset(), public_key=server_public_key)
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
         # TODO: run a connect to an API on the VPN server to authorize the client public key
-        response = {
-            'status': 'success',
-            'detail': 'public_key "{}" has been authorized.'.format(client_public_key)
+        request_data = {
+            'publicKey': client_public_key
         }
+        charset = 'utf-8'
+        signer = CjdnsMessageSigner()
+        signature = signer.sign(json.dumps(request_data), charset)
+        headers = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Authorization': 'cjdns {}'.format(signature)
+        }
+        url = "{}{}".format(
+            vpn_server.authorization_server_url,
+            '/authorize/'
+        )
+
+        response_status = status.HTTP_400_BAD_REQUEST
+        response = {
+            'status': '',
+            'message': ''
+        }
+        try:
+            request_response = requests.post(url, json=request_data, headers=headers, timeout=self.AUTHORIZATION_URL_TIMEOUT_S)
+        except requests.exceptions.Timeout:
+            response_status = status.HTTP_408_REQUEST_TIMEOUT
+            response['status'] = 'error'
+            response['message'] = 'VPN server timed out.'
+            serializer = self.get_serializer(data=response)
+            return Response(serializer.data, status=response_status)
+
+        try:
+            json_response = request_response.json()
+            if request_response.status_code == 200:
+                response_status = status.HTTP_200_OK
+                response['status'] = 'success'
+                response['message'] = 'Public key "{}" was authorized'.format(client_public_key)
+            elif request_response.status_code == 201:
+                response_status = status.HTTP_201_CREATED
+                response['status'] = 'success'
+                response['message'] = 'Public key "{}" was authorized'.format(client_public_key)
+            else:
+                response_status = status.HTTP_401_UNAUTHORIZED
+                response['status'] = 'error'
+                response['message'] = json_response['message']
+        except json.decoder.JSONDecodeError:
+            response_status = status.HTTP_400_BAD_REQUEST
+            response['status'] = 'error'
+            response['message'] = 'Invalid request'
+
         serializer = self.get_serializer(data=response)
-        return Response(serializer.data)
+        return Response(serializer.data, status=response_status)
 
 
 '''
