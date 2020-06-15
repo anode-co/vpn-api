@@ -15,7 +15,7 @@ class VpnServerResponseSerializer(serializers.Serializer):
     """Serialize the VPN Server response."""
 
     status = serializers.CharField()
-    message = serializers.CharField()
+    message = serializers.CharField(allow_null=True)
     expires_at = serializers.IntegerField(allow_null=True)
 
 
