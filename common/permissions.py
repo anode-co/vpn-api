@@ -743,40 +743,39 @@ Sign_sign("yabba-dabba-doooo")'
 # Shortcut function for testing signatures
 
 
-from cjdnsadmin.cjdnsadmin import cjdns
+from cjdnsadmin.cjdnsadmin import connect
 import base64
 import json
 import hashlib
 import requests
-from django.utilsimport timezone
+from django.utils import timezone
 
 
 charset = 'utf-8'
 data = {
-    "clientPublicKey": "lpbn7kp16xu9nsnl9kxqj70wztb12r2j7pwg50dvdj5yl3bntkg0.k",
     'date': round(timezone.now().timestamp())
 }
 
 
 def secure_request(url, method, data):
-    charset = 'utf-8'
-    cjdns = connect("127.0.0.1", 11234, "NONE")
-    if data is None:
-        data_string = ''.encode('utf-8')
-    else:
-        data_string = json.dumps(data, separators=(',', ':')).encode(charset)
-    data_string_hash = hashlib.sha256(data_string).digest()
-    data_string_b64_hash = base64.b64encode(data_string_hash)
-    print("base64_hash: {}".format(data_string_b64_hash))
-    output = cjdns.Sign_sign(data_string_b64_hash)
-    print(output)
-    if output[b'error'] == b'none':
-        signature = output[b'signature'].decode(charset)
-    headers = {
-        'Content-Type': 'application/json; encoding=utf-8',
-        'Authorization': 'cjdns {}'.format(signature)
-    }
-    response = requests.request(method, url=url, data=data_string, headers=headers)
-    return response
+charset = 'utf-8'
+cjdns = connect("127.0.0.1", 11234, "NONE")
+if data is None:
+    data_string = ''.encode('utf-8')
+else:
+    data_string = json.dumps(data, separators=(',', ':')).encode(charset)
+data_string_hash = hashlib.sha256(data_string).digest()
+data_string_b64_hash = base64.b64encode(data_string_hash)
+print("base64_hash: {}".format(data_string_b64_hash))
+output = cjdns.Sign_sign(data_string_b64_hash)
+print(output)
+if output[b'error'] == b'none':
+    signature = output[b'signature'].decode(charset)
+headers = {
+    'Content-Type': 'application/json; encoding=utf-8',
+    'Authorization': 'cjdns {}'.format(signature)
+}
+response = requests.request(method, url=url, data=data_string, headers=headers)
+return response
 
 '''
