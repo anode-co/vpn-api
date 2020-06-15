@@ -5,7 +5,7 @@ from django.db.models.signals import pre_save
 from django.core.validators import MinValueValidator
 import json
 import requests
-from django.utils import timezone
+# from django.utils import timezone
 from common.permissions import CjdnsMessageSigner
 
 
@@ -428,12 +428,12 @@ class CjdnsVpnServer(models.Model):
         response = requests.post(url, data=data_string, headers=headers)
         return response
 
-    def get_api_request_authorization(self, client_public_key):
+    def get_api_request_authorization(self, client_public_key, date):
         """Get an authorization request."""
         print("asking to authorize {}".format(client_public_key))
         data = {
             'clientPublicKey': client_public_key,
-            'date': round(timezone.now().timestamp())
+            'date': date
         }
         return self.secure_api_request(self.AUTHORIZATION_ENDPOINT, data)
 

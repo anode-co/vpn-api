@@ -17,6 +17,7 @@ from .serializers_0_1 import (
     VpnClientEventSerializer,
     ClientSoftwareVersionSerializer,
     CjdnsVPNServerSerializer,
+    VpnServerAuthorizationRequestSerializer,
     VpnServerResponseSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
@@ -190,10 +191,11 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
     """Authorize a Client public key."""
 
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
-    serializer_class = VpnServerResponseSerializer
+    serializer_class = VpnServerAuthorizationRequestSerializer
     AUTHORIZATION_URL_TIMEOUT_S = 3
 
-    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied'})
+    '''
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnServerResponseSerializer, 201: VpnServerResponseSerializer})
     def get(self, request, public_key):
         """Authorize client on a VPN.
 
@@ -225,6 +227,48 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
             response['status'] = 'error'
             response['message'] = 'VPN server timed out.'
         serializer = self.get_serializer(data=response)
+        serializer.is_valid()
+        return Response(serializer.data, status=response_status)
+    '''
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnServerResponseSerializer, 201: VpnServerResponseSerializer})
+    def post(self, request, public_key):
+        """Authorize client on a VPN.
+
+        Request that a VPN authorize and create routes for a client public key.
+        The client that signed the HTTP request will be the one authorized.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=public_key)
+        response_status = status.HTTP_400_BAD_REQUEST
+        response = {
+            'status': '',
+            'message': ''
+        }
+        try:
+            request_response = vpn_server.get_api_request_authorization(self.auth_verified_cjdns_public_key, serializer.validated_data['date'])
+            # print(request_response)
+            # print(request_response.text)
+            # print(request_response.json())
+            try:
+                json_response = request_response.json()
+                # json_response['status'] = json_response['status']
+                # json_response['expires_at'] = json_response['expiresAt']
+                response_status = request_response.status_code
+                response = json_response
+                print("SUCCESS")
+            except json.decoder.JSONDecodeError:
+                response_status = status.HTTP_400_BAD_REQUEST
+                response['status'] = 'error'
+                response['message'] = 'Invalid request'
+                print("JSON DECODE ERROR")
+        except Exception:
+            response_status = status.HTTP_408_REQUEST_TIMEOUT
+            response['status'] = 'error'
+            response['message'] = 'VPN server timed out.'
+            print("SERVER TIMED OUT")
+        serializer = VpnServerResponseSerializer(data=response)
         serializer.is_valid()
         return Response(serializer.data, status=response_status)
 

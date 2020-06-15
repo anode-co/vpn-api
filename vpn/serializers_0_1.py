@@ -19,6 +19,12 @@ class VpnServerResponseSerializer(serializers.Serializer):
     expires_at = serializers.IntegerField(allow_null=True)
 
 
+class VpnServerAuthorizationRequestSerializer(serializers.Serializer):
+    """Serialize the VPN Server response."""
+
+    date = serializers.IntegerField()
+
+
 class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSerializer):
     """Serializer for the VpnClientEvent model."""
 
