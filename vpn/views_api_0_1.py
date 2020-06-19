@@ -186,7 +186,6 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     '''
 
-
 class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Authorize a Client public key."""
 
@@ -246,6 +245,7 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
             'status': '',
             'message': ''
         }
+        # self.auth_verified_cjdns_public_key = 'munw8n871pb5kw7fypv2fgj9jmplg67nr5s4mws8uj8g3uvgtf20.k'
         try:
             request_response = vpn_server.get_api_request_authorization(self.auth_verified_cjdns_public_key, serializer.validated_data['date'])
             # print(request_response)
@@ -259,9 +259,9 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
                 response = json_response
                 print("SUCCESS")
             except json.decoder.JSONDecodeError:
-                response_status = status.HTTP_400_BAD_REQUEST
+                response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
                 response['status'] = 'error'
-                response['message'] = 'Invalid request'
+                response['message'] = 'Could not decode VPN JSON response: \'{}\''.format(response.text)
                 print("JSON DECODE ERROR")
         except Exception:
             response_status = status.HTTP_408_REQUEST_TIMEOUT
@@ -270,6 +270,8 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
             print("SERVER TIMED OUT")
         serializer = VpnServerResponseSerializer(data=response)
         serializer.is_valid()
+        print("Returning output")
+        print(serializer.data)
         return Response(serializer.data, status=response_status)
 
 
