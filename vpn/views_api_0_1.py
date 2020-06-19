@@ -98,7 +98,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
                 'detail': 'event logged',
             }
             with open('{}buggy_log_input.txt'.format(settings.BASE_DIR), 'a+') as file:
-                file.write(str(request.data).decode("utf-8").encode("ascii", "ignore"))
+                file.write(str(request.data).encode("ascii", "ignore").decode('ascii'))
                 file.write("\n\n")
             return Response(response)
         else:
