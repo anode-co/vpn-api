@@ -426,6 +426,8 @@ class CjdnsVpnServer(models.Model):
             'Authorization': 'cjdns {}'.format(signature)
         }
         response = requests.post(url, data=data_string, headers=headers)
+        print(response)
+        print(response.text)
         return response
 
     def get_api_request_authorization(self, client_public_key, date):
