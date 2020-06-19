@@ -90,7 +90,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         except ValueError:
             pass
         serializer = self.get_serializer(data=request.data)
-        # hack to support CJ's bad request bug
+        # invalid request but logged anyway
         if serializer.is_valid() is False:
             response = {
                 'status': 'success',
