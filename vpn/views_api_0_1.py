@@ -31,6 +31,7 @@ from common.serializers_0_3 import GenericResponseSerializer
 from rest_framework_api_key.permissions import HasAPIKey
 import ipaddress
 from django.utils import timezone
+from django.conf import settings
 
 
 def method_permission_classes(classes):
@@ -96,7 +97,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
                 'status': 'success',
                 'detail': 'event logged',
             }
-            with open('buggy_log_input.txt', 'a+') as file:
+            with open('{}buggy_log_input.txt'.format(settings.BASE_DIR), 'a+') as file:
                 file.write(str(response.data))
                 file.write("\n\n")
             return Response(response)
