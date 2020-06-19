@@ -90,13 +90,24 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         except ValueError:
             pass
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
+        # hack to support CJ's bad request bug
+        if request.data['ip4_address'] == '162.158.134.43' and serializer.is_valid() is False:
             response = {
                 'status': 'success',
                 'detail': 'event logged',
             }
+            with open('cjs_buggy_log_input.txt', 'a+') as file:
+                file.write(str(response.data))
+                file.write("\n\n")
             return Response(response)
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        response = {
+            'status': 'success',
+            'detail': 'event logged',
+        }
+        return Response(response)
 
 
 class ClientSoftwareVersionRestApiView(GenericAPIView):
