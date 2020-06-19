@@ -111,13 +111,11 @@ class ClientSoftwareVersion(models.Model):
     @property
     def client_software_version(self):
         """Convert version numbers into string."""
-        print("getting client software version")
         output = None
         if self.revision_number is None:
             output = '{}-{}.{}'.format(self.client_os, str(self.major_number), str(self.minor_number))
         else:
             output = '{}-{}.{}.{}'.format(self.client_os, str(self.major_number), str(self.minor_number), str(self.revision_number))
-        print(output)
         return output
 
     def __str__(self):
