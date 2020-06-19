@@ -758,24 +758,24 @@ data = {
 
 
 def secure_request(url, method, data):
-charset = 'utf-8'
-cjdns = connect("127.0.0.1", 11234, "NONE")
-if data is None:
-    data_string = ''.encode('utf-8')
-else:
-    data_string = json.dumps(data, separators=(',', ':')).encode(charset)
-data_string_hash = hashlib.sha256(data_string).digest()
-data_string_b64_hash = base64.b64encode(data_string_hash)
-print("base64_hash: {}".format(data_string_b64_hash))
-output = cjdns.Sign_sign(data_string_b64_hash)
-print(output)
-if output[b'error'] == b'none':
-    signature = output[b'signature'].decode(charset)
-headers = {
-    'Content-Type': 'application/json; encoding=utf-8',
-    'Authorization': 'cjdns {}'.format(signature)
-}
-response = requests.request(method, url=url, data=data_string, headers=headers)
-return response
+    charset = 'utf-8'
+    cjdns = connect("127.0.0.1", 11234, "NONE")
+    if data is None:
+        data_string = ''.encode('utf-8')
+    else:
+        data_string = json.dumps(data, separators=(',', ':')).encode(charset)
+    data_string_hash = hashlib.sha256(data_string).digest()
+    data_string_b64_hash = base64.b64encode(data_string_hash)
+    print("base64_hash: {}".format(data_string_b64_hash))
+    output = cjdns.Sign_sign(data_string_b64_hash)
+    print(output)
+    if output[b'error'] == b'none':
+        signature = output[b'signature'].decode(charset)
+    headers = {
+        'Content-Type': 'application/json; encoding=utf-8',
+        'Authorization': 'cjdns {}'.format(signature)
+    }
+    response = requests.request(method, url=url, data=data_string, headers=headers)
+    return response
 
 '''

@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from .models import (
     ClientSoftwareVersion,
     CjdnsVpnServer,
+    VpnClientEvent,
 )
 from .serializers_0_1 import (
     VpnClientEventSerializer,
@@ -28,6 +29,8 @@ from common.permissions import (
 )
 from common.serializers_0_3 import GenericResponseSerializer
 from rest_framework_api_key.permissions import HasAPIKey
+import ipaddress
+from django.utils import timezone
 
 
 def method_permission_classes(classes):
@@ -186,6 +189,7 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     '''
 
+
 class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Authorize a Client public key."""
 
@@ -230,6 +234,15 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
         return Response(serializer.data, status=response_status)
     '''
 
+    def get_client_ip(self, request):
+        """Get the client IP address."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnServerResponseSerializer, 201: VpnServerResponseSerializer})
     def post(self, request, public_key):
         """Authorize client on a VPN.
@@ -245,6 +258,32 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
             'status': '',
             'message': ''
         }
+
+        client_ip = self.get_client_ip(request)
+        client_ip4_address = None
+        client_ip6_address = None
+        if client_ip is not None:
+            try:
+                ip = ipaddress.ip_address(client_ip)
+                if ip.version == 4:
+                    client_ip4_address = client_ip
+                elif ip.version == 6:
+                    client_ip6_address = client_ip
+            except ValueError:
+                pass
+
+        do_logging = False
+        logger = VpnClientEvent()
+        logger.public_key = self.auth_verified_cjdns_public_key
+        logger.error = "connectionFailed"
+        logger.client_software_version = 'unknown'
+        logger.client_os = 'unknown'
+        logger.client_os_version = 'unknown'
+        logger.local_timestamp = timezone.now()
+        logger.ip4_address = client_ip4_address
+        logger.ip6_address = client_ip6_address
+        logger.previous_android_log = "server public key: {}".format(public_key)
+
         # self.auth_verified_cjdns_public_key = 'munw8n871pb5kw7fypv2fgj9jmplg67nr5s4mws8uj8g3uvgtf20.k'
         try:
             request_response = vpn_server.get_api_request_authorization(self.auth_verified_cjdns_public_key, serializer.validated_data['date'])
@@ -258,20 +297,42 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
                 response_status = request_response.status_code
                 response = json_response
                 print("SUCCESS")
+
+                if request_response.status_code != 200 and request_response.status_code != 201:
+                    logger.message = 'VPN connection error on behalf of app'
+                    logger.debugging_messages = request_response.text
+                    logger.previous_android_log = "server public key: {}".format(public_key)
+                    do_logging = True
+
             except json.decoder.JSONDecodeError:
                 response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
                 response['status'] = 'error'
                 response['message'] = 'Could not decode VPN JSON response: \'{}\''.format(response.text)
+
+                logger.message = 'VPN connection error on behalf of app'
+                logger.debugging_messages = request_response.text
+                logger.previous_android_log = "server public key: {}".format(public_key)
+                do_logging = True
+
                 print("JSON DECODE ERROR")
         except Exception:
             response_status = status.HTTP_408_REQUEST_TIMEOUT
             response['status'] = 'error'
             response['message'] = 'VPN server timed out.'
             print("SERVER TIMED OUT")
+
+            logger.message = 'VPN Server timed out'
+            logger.debugging_messages = "VPN Server timed out"
+            logger.previous_android_log = "server public key: {}".format(public_key)
+            do_logging = True
+
         serializer = VpnServerResponseSerializer(data=response)
         serializer.is_valid()
         print("Returning output")
         print(serializer.data)
+
+        if do_logging is True:
+            logger.save()
         return Response(serializer.data, status=response_status)
 
 
