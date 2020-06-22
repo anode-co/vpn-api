@@ -49,11 +49,13 @@ class UserEmailSerializer(serializers.Serializer):
             pass
         return username
 
+    '''
     def validate_password(self, password):
         """Validate the password field."""
         # TODO: Remove for  wallet integration
         validate_password(password)
         return password
+    '''
 
     def save(self, commit=True):
         """Save the User."""
