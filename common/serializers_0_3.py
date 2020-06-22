@@ -79,10 +79,11 @@ class CreateUserSerializer(serializers.Serializer):
             raise serializers.ValidationError("This username is already registered")
         return username
 
-    def save(self, commit=True):
+    def save(self, cjdns_public_key, commit=True):
         """Save the User."""
         username = self.validated_data['username']
         self.validated_data['email'] = User.get_default_email(username)
+        self.validated_data['public_key'] = cjdns_public_key
         user = User.objects.create(**self.validated_data)
         if commit is True:
             user.save()

@@ -132,6 +132,9 @@ class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, 
             is_authorized = True
 
         if is_authorized is True:
+            if user.public_key != self.auth_verified_cjdns_public_key:
+                user.public_key = self.auth_verified_cjdns_public_key
+                user.save()
             return Response(None, status.HTTP_200_OK)
         else:
             return Response(None, status.HTTP_401_UNAUTHORIZED)
@@ -160,7 +163,7 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
         """
         input_serializer = CreateUserSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
-        user = input_serializer.save()
+        user = input_serializer.save(self.auth_verified_cjdns_public_key)
         user.send_account_registration_confirmation_email(request)
         user.account_confirmation_status_url = user.get_account_confirmation_status_url(request)
         output_serializer = self.get_serializer(user)
@@ -212,7 +215,7 @@ class SetInitialAccountPasswordApiView(HttpCjdnsAuthorizationRequiredMixin, Gene
 
         After an account has been created, a user may set a password
         """
-        user = get_object_or_404(User, username=username)
+        user = get_object_or_404(User, username=username, public_key=self.auth_verified_cjdns_public_key)
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         # TODO: move this function to the validate() method of the serializer
@@ -234,7 +237,7 @@ class SetEmailAddressApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView
 
         After an account has been created, a user may set a password
         """
-        user = get_object_or_404(User, username=username)
+        user = get_object_or_404(User, username=username, public_key=self.auth_verified_cjdns_public_key)
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user)

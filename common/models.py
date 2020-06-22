@@ -84,6 +84,7 @@ class User(AbstractUser):
 
     @staticmethod
     def get_default_email(username):
+        """Return the user's system-generated email."""
         return User.DEFAULT_EMAIL_FORMAT.format(username)
 
     @property
@@ -179,10 +180,6 @@ class User(AbstractUser):
     @classmethod
     def pre_save(cls, instance, *args, **kwargs):
         """Pre-save script. Generate public/private key."""
-        if instance.public_key is None:
-            private_key, public_key = keys.gen_keypair(curve.P256)
-            instance.public_key = Utilities.to_base32(public_key.x) + Utilities.to_base32(public_key.y)
-            instance.private_key = Utilities.to_base32(private_key)
         if instance.public_key_id is None:
             instance.public_key_id = "{}-{}".format(instance.public_key[:10], instance.id)
         if instance.is_confirmed is True and instance.backup_wallet_password is None:
