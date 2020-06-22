@@ -19,6 +19,6 @@ urlpatterns = [
 
     path('vpn/accounts/authorize/', AccountLoginApiView.as_view(), name="account_login"),
 
-    path('vpn/accounts/<username>/email/', SetEmailAddressApiView.as_view(), name="account_register_email"),
+    path('vpn/accounts/<username>/initialemail/', SetEmailAddressApiView.as_view(), name="account_register_email"),
     path('vpn/accounts/<username>/initialpassword/', SetInitialAccountPasswordApiView.as_view(), name="account_set_initial_password"),
 ]
