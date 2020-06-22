@@ -24,21 +24,8 @@ from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
 from .permissions import (
     CsrfExemptMixin,
-    HttpDigestRequiredMixin,
     HttpCjdnsAuthorizationRequiredMixin,
 )
-
-
-class DigestTestApiView(HttpDigestRequiredMixin, GenericAPIView):
-    """Test Digest Mixin."""
-
-    def get(self, request):
-        """GET method."""
-        return Response({})
-
-    def post(self, request):
-        """GET method."""
-        return Response({})
 
 
 class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):

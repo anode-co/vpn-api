@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password  # TODO: remove for wallet integration
+from django.core.exceptions import ValidationError  # TODO: remove for wallet integration
 from .models import (
     User,
     PasswordResetRequest,
@@ -18,6 +20,7 @@ class UserEmailSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
     username = serializers.CharField()
+    password = serializers.CharField()   # TODO: Remove for wallet integration
 
     def validate_email(self, email):
         """Validate the email field."""
@@ -39,15 +42,23 @@ class UserEmailSerializer(serializers.Serializer):
             pass
         return username
 
+    def validate_password(self, password):
+        """Validate the password field."""
+        # TODO: Remove for  wallet integration
+        validate_password(password)
+        return password
+
     def save(self, commit=True):
         """Save the User."""
         email = self.validated_data['email']
         username = self.validated_data['username']
+        password = self.validated_data['password']   # TODO: Remove for wallet integration
         try:
             user = User.objects.get(email=email)
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             user = User.objects.create(**self.validated_data)
+            user.set_password(password)   # TODO: Remove for wallet integration
             if commit is True:
                 user.save()
         return user
