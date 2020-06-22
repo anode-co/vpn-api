@@ -6,6 +6,7 @@ from .views_api_0_3 import (
     SetInitialAccountPasswordApiView,
     AccountLoginApiView,
     SetEmailAddressApiView,
+    AccountPublicKeyApiView,
 )
 
 app_name = 'common_api_0_3_account_management'
@@ -21,4 +22,6 @@ urlpatterns = [
 
     path('vpn/accounts/<username>/initialemail/', SetEmailAddressApiView.as_view(), name="account_register_email"),
     path('vpn/accounts/<username>/initialpassword/', SetInitialAccountPasswordApiView.as_view(), name="account_set_initial_password"),
+
+    path('vpn/accounts/<username>/publickey/', AccountPublicKeyApiView.as_view(), name="account_public_key"),
 ]

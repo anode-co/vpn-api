@@ -22,6 +22,7 @@ from .serializers_0_3 import (
     UserEmailLoginSerializer,
     SetEmailAddressSerializer,
     SetInitialPasswordSerializer,
+    UserPublicKeyLoginSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -242,6 +243,18 @@ class SetEmailAddressApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView
         serializer.is_valid(raise_exception=True)
         serializer.save(user)
         return Response(None)
+
+
+class AccountPublicKeyApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
+    """Account Public Key."""
+
+    serializer_class = UserPublicKeyLoginSerializer
+
+    def get(self, request, username):
+        """Get the user's public key."""
+        user = get_object_or_404(User, username=username)
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
 
 
 class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):

@@ -20,6 +20,16 @@ class UserEmailLoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
+class UserPublicKeyLoginSerializer(serializers.ModelSerializer):
+    """Serialize the Public Key of the User."""
+
+    class Meta:
+        """Meta information."""
+
+        model = User
+        fields = ['public_key']
+
+
 class SetEmailAddressSerializer(serializers.Serializer):
     """Serialize the user's email address."""
 
