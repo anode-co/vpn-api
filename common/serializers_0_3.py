@@ -33,8 +33,7 @@ class UserEmailSerializer(serializers.Serializer):
         """Validate the email field."""
         try:
             user = User.objects.get(email=email)
-            if user.is_confirmed:
-                raise serializers.ValidationError("This email address is already registered")
+            raise serializers.ValidationError("This email address is already registered")
         except User.DoesNotExist:
             pass
         return email
@@ -43,10 +42,14 @@ class UserEmailSerializer(serializers.Serializer):
         """Validate the email field."""
         try:
             user = User.objects.get(username=username)
-            if user.is_confirmed:
-                raise serializers.ValidationError("This username address is already registered")
+            print("user already exists")
+            raise serializers.ValidationError("This username address is already registered")
         except User.DoesNotExist:
+            print("user does not yet exist")
             pass
+        except user.MultipleObjectsReturned:
+            print("multiple usernames already exist")
+            raise serializers.ValidationError("This username address is already registered")
         return username
 
     '''
