@@ -9,7 +9,7 @@ from .models import (
     PublicKey,
 )
 from .serializers_0_3 import (
-    UserEmailSerializer,
+    CreateUserSerializer,
     PasswordResetInitializationSerializer,
     PasswordResetConfirmedSerializer,
     PasswordResetPendingSerializer,
@@ -20,6 +20,8 @@ from .serializers_0_3 import (
     UserAccountPendingSerializer,
     CanonicalPublicKeyOutputSerializer,
     UserEmailLoginSerializer,
+    SetEmailAddressSerializer,
+    SetInitialPasswordSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -105,7 +107,7 @@ class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, 
     serializer_class = UserEmailLoginSerializer
 
     @swagger_auto_schema(responses={401: None, 200: None})
-    def get(self, request):
+    def post(self, request):
         """GET method."""
         input_serializer = self.serializer_class(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -146,7 +148,7 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
 
     serializer_class = UserAccountCreatedSerializer
 
-    @swagger_auto_schema(responses={400: 'Invalid request', 201: UserAccountCreatedSerializer}, request_body=UserEmailSerializer, response_body=UserAccountCreatedSerializer)
+    @swagger_auto_schema(responses={400: 'Invalid request', 201: UserAccountCreatedSerializer})
     def post(self, request):
         """Register a new email address.
 
@@ -156,7 +158,7 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
         Meanwhile, the "Check status of new email registration" will reply with
         {"status":"pending"} until the user has opened the confirm URL.
         """
-        input_serializer = UserEmailSerializer(data=request.data)
+        input_serializer = CreateUserSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         user = input_serializer.save()
         user.send_account_registration_confirmation_email(request)
@@ -171,18 +173,18 @@ class CreateAccountConfirmationStatusApiView(HttpCjdnsAuthorizationRequiredMixin
     serializer_class = UserAccountConfirmedSerializer
 
     @swagger_auto_schema(responses={200: UserAccountConfirmedSerializer, 202: UserAccountPendingSerializer, 404: 'Not Found'})
-    def get(self, request, client_email):
-        """Check status of new email registration.
+    def get(self, request, username):
+        """Check status of new account registration.
 
-        (REQUIRES AUTHORIZATION). When a new email address is registered wit the
-        "Register a new email address" method, this method responds responds
+        (REQUIRES AUTHORIZATION). When a new account is registered with the
+        "Register a new account" method, this method responds responds
         with a {"status":"pending"} until the user confirms their email address.
         Once the user confirms their email address, this method returns the
         appSecretToken which can be used to decrypt the wallet
         on the user's app. Once viewed, the password request is destroyed and
         cannot be viewed again.
         """
-        user = get_object_or_404(User, email=client_email)
+        user = get_object_or_404(User, username=username)
         http_status = status.HTTP_202_ACCEPTED
         output = {'status': 'pending'}
         if user.is_confirmed is True:
@@ -197,6 +199,46 @@ class CreateAccountConfirmationStatusApiView(HttpCjdnsAuthorizationRequiredMixin
         serializer = self.serializer_class(data=output)
         serializer.is_valid()
         return Response(serializer.data, status=http_status)
+
+
+class SetInitialAccountPasswordApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
+    """Set the initial account password."""
+
+    serializer_class = SetInitialPasswordSerializer
+
+    @swagger_auto_schema(responses={200: None, 403: None})
+    def post(self, request, username):
+        """Set the initial password for the user.
+
+        After an account has been created, a user may set a password
+        """
+        user = get_object_or_404(User, username=username)
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        # TODO: move this function to the validate() method of the serializer
+        if user.has_usable_password() is False or user.password == '':
+            serializer.save(user)
+            return Response(None)
+        else:
+            return Response(None, status=status.HTTP_403_FORBIDDEN)
+
+
+class SetEmailAddressApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
+    """Set the initial account password."""
+
+    serializer_class = SetEmailAddressSerializer
+
+    @swagger_auto_schema(responses={200: None, 400: None})
+    def post(self, request, username):
+        """Set the initial password for the user.
+
+        After an account has been created, a user may set a password
+        """
+        user = get_object_or_404(User, username=username)
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user)
+        return Response(None)
 
 
 class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):

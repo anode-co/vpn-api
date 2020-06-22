@@ -59,6 +59,8 @@ class UserManager(UserManager):
 class User(AbstractUser):
     """Custom User."""
 
+    DEFAULT_EMAIL_FORMAT = 'noemail-{}@vpn.anode.co'
+
     username = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(_('Email address'), unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
@@ -79,6 +81,10 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     objects = UserManager()
+
+    @staticmethod
+    def get_default_email(username):
+        return User.DEFAULT_EMAIL_FORMAT.format(username)
 
     @property
     def full_name(self):
@@ -147,11 +153,11 @@ class User(AbstractUser):
 
     def get_account_confirmation_status_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common_api_0_3_account_management:check_account_registration_confirmation', kwargs={'client_email': self.email}))
+        return request.build_absolute_uri(reverse('common_api_0_3_account_management:check_account_registration_confirmation', kwargs={'username': self.username}))
 
     def get_account_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common:confirm_account_registration_with_confirm_code', kwargs={'client_email': self.email, 'confirmation_code': self.confirmation_code}))
+        return request.build_absolute_uri(reverse('common:confirm_account_registration_with_confirm_code', kwargs={'username': self.username, 'confirmation_code': self.confirmation_code}))
 
     def send_account_registration_confirmation_email(self, request, template_set_name='common/emails/customer__create_account_confirmation', fail_silently=False):
         """Send an email to the user confirming their password reset request."""
@@ -240,7 +246,7 @@ class PasswordResetRequest(models.Model):
 
     def get_password_reset_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common:confirm_reset_password_request_with_token', kwargs={'client_email': self.user.email, 'password_reset_token': self.password_reset_token}))
+        return request.build_absolute_uri(reverse('common:confirm_reset_password_request_with_token', kwargs={'username': self.user.username, 'password_reset_token': self.password_reset_token}))
 
     def generate_token(self):
         """Generate a token."""

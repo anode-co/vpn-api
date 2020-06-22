@@ -1,6 +1,4 @@
 from rest_framework import serializers
-from django.contrib.auth.password_validation import validate_password  # TODO: remove for wallet integration
-from django.core.exceptions import ValidationError  # TODO: remove for wallet integration
 from .models import (
     User,
     PasswordResetRequest,
@@ -22,57 +20,72 @@ class UserEmailLoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
-class UserEmailSerializer(serializers.Serializer):
-    """Serialize the email field of the User."""
+class SetEmailAddressSerializer(serializers.Serializer):
+    """Serialize the user's email address."""
 
     email = serializers.EmailField()
-    username = serializers.CharField()
-    password = serializers.CharField()   # TODO: Remove for wallet integration
 
     def validate_email(self, email):
         """Validate the email field."""
         try:
-            user = User.objects.get(email=email)
+            User.objects.get(email=email)
             raise serializers.ValidationError("This email address is already registered")
         except User.DoesNotExist:
             pass
         return email
+
+    def save(self, user, commit=True):
+        """Update the user's email."""
+        email = self.validated_data['email']
+        if user.email != User.get_default_email(user.username):
+            raise serializers.ValidationError("This account already has an email")
+        else:
+            user.email = email
+        if commit is True:
+            user.save()
+        return user
+
+
+class SetInitialPasswordSerializer(serializers.Serializer):
+    """Serialize the input initial password."""
+
+    password = serializers.CharField()
+
+    def save(self, user, commit=True):
+        """Save the user's new password."""
+        password = self.validated_data['password']
+        user.set_password(password)
+        if commit is True:
+            user.save()
+        return user
+
+
+class CreateUserSerializer(serializers.Serializer):
+    """Serialize the email field of the User."""
+
+    username = serializers.CharField()
 
     def validate_username(self, username):
         """Validate the email field."""
         try:
             user = User.objects.get(username=username)
             print("user already exists")
-            raise serializers.ValidationError("This username address is already registered")
+            raise serializers.ValidationError("This username is already registered")
         except User.DoesNotExist:
             print("user does not yet exist")
             pass
         except user.MultipleObjectsReturned:
             print("multiple usernames already exist")
-            raise serializers.ValidationError("This username address is already registered")
+            raise serializers.ValidationError("This username is already registered")
         return username
-
-    '''
-    def validate_password(self, password):
-        """Validate the password field."""
-        # TODO: Remove for  wallet integration
-        validate_password(password)
-        return password
-    '''
 
     def save(self, commit=True):
         """Save the User."""
-        email = self.validated_data['email']
         username = self.validated_data['username']
-        password = self.validated_data['password']   # TODO: Remove for wallet integration
-        try:
-            user = User.objects.get(email=email)
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            user = User.objects.create(**self.validated_data)
-            user.set_password(password)   # TODO: Remove for wallet integration
-            if commit is True:
-                user.save()
+        self.validated_data['email'] = User.get_default_email(username)
+        user = User.objects.create(**self.validated_data)
+        if commit is True:
+            user.save()
         return user
 
 
