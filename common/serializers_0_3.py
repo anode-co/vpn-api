@@ -15,6 +15,13 @@ class GenericResponseSerializer(serializers.Serializer):
     message = serializers.CharField(allow_null=True, allow_blank=True)
 
 
+class UserEmailLoginSerializer(serializers.Serializer):
+    """Serialize the email field of the User."""
+
+    email_or_username = serializers.CharField()
+    password = serializers.CharField()
+
+
 class UserEmailSerializer(serializers.Serializer):
     """Serialize the email field of the User."""
 

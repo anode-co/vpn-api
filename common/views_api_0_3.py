@@ -19,6 +19,7 @@ from .serializers_0_3 import (
     UserAccountConfirmedSerializer,
     UserAccountPendingSerializer,
     CanonicalPublicKeyOutputSerializer,
+    UserEmailLoginSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -26,6 +27,7 @@ from .permissions import (
     CsrfExemptMixin,
     HttpCjdnsAuthorizationRequiredMixin,
 )
+from django.contrib.auth import authenticate  # TODO: Remove for wallet integration
 
 
 class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
@@ -89,6 +91,48 @@ class RegisterPublicKeyView(CsrfExemptMixin, GenericAPIView):
         output_serializer = self.get_serializer(public_key)
         # output_serializer.is_valid()
         return Response(output_serializer.data, status.HTTP_201_CREATED)
+
+
+class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
+    """When a new email address is submitted.
+
+    the email address is registered with the system and a unique token
+    is generated for that email.
+    This token must be kept secret and is used for operations
+    related to account management.
+    """
+
+    serializer_class = UserEmailLoginSerializer
+
+    @swagger_auto_schema(responses={401: None, 200: None})
+    def get(self, request):
+        """GET method."""
+        input_serializer = self.serializer_class(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        email = input_serializer.data['email_or_username']
+        username = input_serializer.data['email_or_username']
+        password = input_serializer.data['password']
+        is_authorized = False
+
+        print("Attempting to authorize email={}, password={}".format(email, password))
+        user = authenticate(email=email, password=password)
+        if user is None:
+            print("Attempting to authorize username={}, password={}".format(username, password))
+            # Can't use authorization system because we originally
+            # constructed the User to not use a username
+            try:
+                user = User.objects.get(username=username)
+                if user.check_password(password) is True:
+                    is_authorized = True
+            except User.DoesNotExist:
+                is_authorized = False
+        else:
+            is_authorized = True
+
+        if is_authorized is True:
+            return Response(None, status.HTTP_200_OK)
+        else:
+            return Response(None, status.HTTP_401_UNAUTHORIZED)
 
 
 class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
