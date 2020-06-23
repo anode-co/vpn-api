@@ -108,8 +108,19 @@ class UserAccountCreatedSerializer(serializers.ModelSerializer):
 
         model = User
         fields = [
-            'account_confirmation_status_url',
             'password_recovery_token'
+        ]
+
+
+class EmailConfirmationSerializer(serializers.ModelSerializer):
+    """Serialize the confirmation field of the User."""
+
+    class Meta:
+        """Meta information."""
+
+        model = User
+        fields = [
+            'account_confirmation_status_url',
         ]
 
 

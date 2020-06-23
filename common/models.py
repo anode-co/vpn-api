@@ -180,7 +180,7 @@ class User(AbstractUser):
     @classmethod
     def pre_save(cls, instance, *args, **kwargs):
         """Pre-save script. Generate public/private key."""
-        if instance.public_key_id is None:
+        if instance.public_key_id is None and instance.public_key is not None:
             instance.public_key_id = "{}-{}".format(instance.public_key[:10], instance.id)
         if instance.is_confirmed is True and instance.backup_wallet_password is None:
             instance.generate_backup_wallet_password(commit=False)

@@ -279,4 +279,17 @@ def secure_request(url, method, data):
     response = requests.request(method, url=url, data=data_string, headers=headers)
     return response
 
+
+login_url = 'http://127.0.0.1:8002/api/0.3/vpn/accounts/'
+login_method = 'post'
+login_data = {'username': 'dimitris'}
+login_response = secure_request(login_url, login_method, login_data)
+
+
+email_url = 'http://127.0.0.1:8002/api/0.3/vpn/accounts/dimitris/initialemail/'
+email_method = 'post'
+email_data = {'email': 'backupbrain@gmail.com'}
+email_response = secure_request(email_url, email_method, email_data)
+
+
 '''

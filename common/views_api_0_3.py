@@ -9,12 +9,11 @@ from .models import (
     PublicKey,
 )
 from .serializers_0_3 import (
+    GenericResponseSerializer,
     CreateUserSerializer,
     PasswordResetInitializationSerializer,
     PasswordResetConfirmedSerializer,
     PasswordResetPendingSerializer,
-    PublicKeyInputSerializer,
-    PublicKeyOutputSerializer,
     UserAccountCreatedSerializer,
     UserAccountConfirmedSerializer,
     UserAccountPendingSerializer,
@@ -23,6 +22,7 @@ from .serializers_0_3 import (
     SetEmailAddressSerializer,
     SetInitialPasswordSerializer,
     UserPublicKeyLoginSerializer,
+    EmailConfirmationSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -65,35 +65,6 @@ class GetCoordinatorPublicKeyApiView(GenericAPIView):
         public_key = get_object_or_404(PublicKey, public_key_id='coordinator')
         output_serializer = self.get_serializer(public_key)
         return Response(output_serializer.data)
-
-
-class RegisterPublicKeyView(CsrfExemptMixin, GenericAPIView):
-    """When a new email address is submitted.
-
-    the email address is registered with the system and a unique token
-    is generated for that email.
-    This token must be kept secret and is used for operations
-    related to account management.
-    """
-
-    serializer_class = PublicKeyOutputSerializer
-    pagination = None
-
-    @swagger_auto_schema(responses={400: 'Invalid request'}, request_body=PublicKeyInputSerializer)
-    def post(self, request):
-        """Register a new public key.
-
-        Register a new public key. This key is used to verify signatures
-        on API endpoints that require authorization. This authorization
-        confirms to the draft-cavage-http-signatures-10 Authorization standard.
-        """
-        print(request.data)
-        input_serializer = PublicKeyInputSerializer(data=request.data)
-        input_serializer.is_valid(raise_exception=True)
-        public_key = input_serializer.save()
-        output_serializer = self.get_serializer(public_key)
-        # output_serializer.is_valid()
-        return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
 class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
@@ -165,8 +136,8 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
         input_serializer = CreateUserSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         user = input_serializer.save(self.auth_verified_cjdns_public_key)
-        user.send_account_registration_confirmation_email(request)
-        user.account_confirmation_status_url = user.get_account_confirmation_status_url(request)
+        # user.send_account_registration_confirmation_email(request)
+        # user.account_confirmation_status_url = user.get_account_confirmation_status_url(request)
         output_serializer = self.get_serializer(user)
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
@@ -210,7 +181,7 @@ class SetInitialAccountPasswordApiView(HttpCjdnsAuthorizationRequiredMixin, Gene
 
     serializer_class = SetInitialPasswordSerializer
 
-    @swagger_auto_schema(responses={200: None, 403: None})
+    @swagger_auto_schema(responses={200: GenericResponseSerializer, 403: GenericResponseSerializer})
     def post(self, request, username):
         """Set the initial password for the user.
 
@@ -222,9 +193,15 @@ class SetInitialAccountPasswordApiView(HttpCjdnsAuthorizationRequiredMixin, Gene
         # TODO: move this function to the validate() method of the serializer
         if user.has_usable_password() is False or user.password == '':
             serializer.save(user)
-            return Response(None)
+            output = {"status": "success", "message": "initial password set"}
+            output_serializer = GenericResponseSerializer(data=output)
+            output_serializer.is_valid()
+            return Response(output_serializer.data)
         else:
-            return Response(None, status=status.HTTP_403_FORBIDDEN)
+            output = {"status": "failed", "message": "a password is already set for this account"}
+            output_serializer = GenericResponseSerializer(data=output)
+            output_serializer.is_valid()
+            return Response(output_serializer.data, status=status.HTTP_403_FORBIDDEN)
 
 
 class SetEmailAddressApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
@@ -232,7 +209,7 @@ class SetEmailAddressApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView
 
     serializer_class = SetEmailAddressSerializer
 
-    @swagger_auto_schema(responses={200: None, 400: None})
+    @swagger_auto_schema(responses={200: EmailConfirmationSerializer, 400: None})
     def post(self, request, username):
         """Set the initial password for the user.
 
@@ -242,7 +219,10 @@ class SetEmailAddressApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user)
-        return Response(None)
+        user.send_account_registration_confirmation_email(request)
+        user.account_confirmation_status_url = user.get_account_confirmation_status_url(request)
+        ouput_serializer = EmailConfirmationSerializer(user)
+        return Response(ouput_serializer.data)
 
 
 class AccountPublicKeyApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
