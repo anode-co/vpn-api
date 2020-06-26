@@ -105,6 +105,7 @@ class ClientSoftwareVersion(models.Model):
     revision_number = models.PositiveSmallIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     binary_download_url = models.URLField(max_length=300)
+    file_size_bytes = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
     certificate_url = models.URLField(max_length=300)
     release_datetime = models.DateTimeField(auto_now_add=True)
 

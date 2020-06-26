@@ -81,6 +81,7 @@ class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
             'minor_number',
             'revision_number',
             'binary_download_url',
+            'file_size_bytes',
             'certificate_url',
             'release_datetime'
         ]
@@ -92,6 +93,7 @@ class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
             'minor_number': 1,
             'revision_number': '11a',
             'binary_download_url': 'https://anode.co/downloads/android-anode-0.9.11a.apk',
+            'file_size_bytes': 4766924,
             'certificate_url': 'https://anode.co/downloads/certificates/android-anode-0.9.11a.pem',
             'release_datetime': '2017-07-21T17:32:28Z'
         }
