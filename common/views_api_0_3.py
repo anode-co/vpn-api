@@ -68,7 +68,7 @@ class GetCoordinatorPublicKeyApiView(GenericAPIView):
         return Response(output_serializer.data)
 
 
-class UsernameApiView(CsrfExemptMixin, GenericAPIView):
+class UsernameApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
     """Generate a new username.
 
     Not all users want to decide on their own username, so
