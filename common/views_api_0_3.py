@@ -23,6 +23,7 @@ from .serializers_0_3 import (
     SetInitialPasswordSerializer,
     UserPublicKeyLoginSerializer,
     EmailConfirmationSerializer,
+    UsernameSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -65,6 +66,30 @@ class GetCoordinatorPublicKeyApiView(GenericAPIView):
         public_key = get_object_or_404(PublicKey, public_key_id='coordinator')
         output_serializer = self.get_serializer(public_key)
         return Response(output_serializer.data)
+
+
+class UsernameApiView(CsrfExemptMixin, GenericAPIView):
+    """Generate a new username.
+
+    Not all users want to decide on their own username, so
+    non-assigned usernames can be generated on the fly.
+    """
+
+    serializer_class = UsernameSerializer
+
+    @swagger_auto_schema(responses={400: GenericResponseSerializer, 200: UsernameSerializer})
+    def get(self, request):
+        """GET method."""
+        username = User.generate_username()
+        if username is False:
+            output = {"status": "error", "message": "New username could not be generated"}
+            serializer = GenericResponseSerializer(data=output)
+            serializer.is_valid()
+            return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
+        output = {'username': username}
+        serializer = self.get_serializer(data=output)
+        serializer.is_valid()
+        return Response(serializer.data)
 
 
 class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):

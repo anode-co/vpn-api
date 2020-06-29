@@ -7,12 +7,14 @@ from .views_api_0_3 import (
     AccountLoginApiView,
     SetEmailAddressApiView,
     AccountPublicKeyApiView,
+    UsernameApiView,
 )
 
 app_name = 'common_api_0_3_account_management'
 
 urlpatterns = [
     path('vpn/accounts/', CreateAccountApiView.as_view(), name="Register New Client Account"),
+    path('vpn/accounts/username/', UsernameApiView.as_view(), name="Generate a new username"),
     path('vpn/accounts/<username>/confirmstatus/', CreateAccountConfirmationStatusApiView.as_view(), name="check_account_registration_confirmation"),
     path('vpn/accounts/<username>/setinitialpassword/', SetInitialAccountPasswordApiView.as_view(), name="set_initial_account_password"),
     path('vpn/accounts/<password_recovery_token>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
