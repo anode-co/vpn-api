@@ -26,23 +26,23 @@ class ConfirmAccountRegistrationView(View):
         }
         return render(request, 'common/account_registration_confirmed.html', context)
 
-    def get(self, request, client_email, confirmation_code=None):
+    def get(self, request, username, confirmation_code=None):
         """Confirm a password reset request."""
         if confirmation_code is None:
             confirmation_code = request.GET.get('code')
             if confirmation_code is not None and confirmation_code != '':
-                user = get_object_or_404(User, email=client_email, confirmation_code=confirmation_code)
+                user = get_object_or_404(User, username=username, confirmation_code=confirmation_code)
                 user.confirm_account()
                 return self.render_complete(request, user, confirmation_code)
             else:
                 form = ConfirmAccountRegistrationForm()
                 context = {
-                    'email': client_email,
+                    'username': username,
                     'form': form
                 }
                 return render(request, 'common/confirm_account_registration.html', context)
         else:
-            user = get_object_or_404(User, email=client_email, confirmation_code=confirmation_code)
+            user = get_object_or_404(User, username=username, confirmation_code=confirmation_code)
             user.confirm_account()
             return self.render_complete(request, user, confirmation_code)
 
@@ -60,7 +60,7 @@ class ConfirmResetPasswordRequestView(View):
         }
         return render(request, 'common/reset_password_confirmed.html', context)
 
-    def get(self, request, client_email, password_reset_token=None):
+    def get(self, request, username, password_reset_token=None):
         """Confirm a password reset request."""
         if password_reset_token is None:
             password_reset_token_str = request.GET.get('password_reset_token')
@@ -71,12 +71,12 @@ class ConfirmResetPasswordRequestView(View):
             else:
                 form = ConfirmPasswordResetForm()
                 context = {
-                    'email': client_email,
+                    'username': username,
                     'form': form
                 }
                 return render(request, 'common/confirm_password_token.html', context)
         else:
-            password_reset_token = get_object_or_404(PasswordResetRequest, password_reset_token=password_reset_token, user__email=client_email, is_complete=False)
+            password_reset_token = get_object_or_404(PasswordResetRequest, password_reset_token=password_reset_token, user__username=username, is_complete=False)
             password_reset_token.confirm()
             return self.render_complete(request, password_reset_token)
 
@@ -86,9 +86,9 @@ class ConfirmAccountRegistrationEmailView(View):
 
     template_file = 'common/emails/customer__create_account_confirmation.txt'
 
-    def get(self, request, client_email):
+    def get(self, request, username):
         """Preview the email."""
-        user = get_object_or_404(User, email=client_email)
+        user = get_object_or_404(User, username=username)
         print("hello")
         print(user)
         context = {
