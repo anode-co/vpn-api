@@ -45,7 +45,7 @@ class VpnClientEvent(models.Model):
     ]
 
     public_key = models.CharField(max_length=64, null=True, blank=True)
-    error = models.CharField(max_length=64, choices=ERROR_CHOICES)
+    error = models.CharField(max_length=64)
     client_software_version = models.CharField(max_length=32)
     client_os = models.CharField(max_length=32)
     client_os_version = models.CharField(max_length=32)

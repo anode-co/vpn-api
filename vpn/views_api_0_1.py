@@ -1,7 +1,6 @@
 import json
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import GenericAPIView
-from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
@@ -32,6 +31,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 import ipaddress
 from django.utils import timezone
 from django.conf import settings
+import requests
 
 
 def method_permission_classes(classes):
@@ -91,15 +91,43 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         except ValueError:
             pass
         serializer = self.get_serializer(data=request.data)
+        # serializer.is_valid(raise_exception=True)
         # invalid request but logged anyway
         if serializer.is_valid() is False:
             response = {
-                'status': 'success',
+                'status': 'error',
                 'detail': 'event logged',
+                'errors': serializer.errors
             }
+            mattermost_url = 'https://pkt.chat/hooks/e16ccf33jiymfgsj6sx64sea8c'
+            mattermost_texts = [
+                "Invalid error logged by {}".format(self.get_client_ip(request)),
+                "**Inbound error:**",
+                "```",
+                json.dumps(request.data, indent=4),
+                "```",
+                # "**Error:***",
+                # "```",
+                # json.dumps(serializer.errors, indent=4),
+                # "```"
+            ]
+            mattermost_data = {
+                "text": "\n".join(mattermost_texts)
+            }
+            mattermost_headers = {
+                'Host': 'pkt.chat',
+                'Content-Type': 'application/json',
+            }
+            requests.post(mattermost_url, json=mattermost_data, headers=mattermost_headers)
+            '''
             with open('{}buggy_log_input.txt'.format(settings.BASE_DIR), 'a+') as file:
+                file.write("=====================\n")
+                file.write("New error logged")
                 file.write(str(request.data).encode("ascii", "ignore").decode('ascii'))
+                file.write("\n")
+                file.write(json.dumps(serializer.errors))
                 file.write("\n\n")
+            '''
             return Response(response)
         else:
             serializer.save()
