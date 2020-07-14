@@ -6,5 +6,9 @@
 		"password": "super secret password",
 		"port": 25,
 		"useTLS": true
+	},
+	"mattermost": {
+		"host": "mattermost.domain",
+		"endpoint": "https://mattermost.domain/hooks/xxx-generatedkey-xxx"
 	}
 }

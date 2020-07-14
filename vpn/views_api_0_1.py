@@ -12,6 +12,7 @@ from .models import (
     ClientSoftwareVersion,
     CjdnsVpnServer,
     VpnClientEvent,
+    MattermostChatApi,
 )
 from .serializers_0_1 import (
     VpnClientEventSerializer,
@@ -31,7 +32,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 import ipaddress
 from django.utils import timezone
 from django.conf import settings
-import requests
+from django.urls import reverse
 
 
 def method_permission_classes(classes):
@@ -90,52 +91,65 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
                 request.data['ip6_address'] = str(ip)
         except ValueError:
             pass
+        log_type = 'error'
         serializer = self.get_serializer(data=request.data)
         # serializer.is_valid(raise_exception=True)
         # invalid request but logged anyway
         if serializer.is_valid() is False:
+            log_type = 'unparsable error'
+            client_event = VpnClientEvent()
+            if 'public_key' in request.data:
+                client_event.public_key = request.data['public_key']
+            if 'error' in request.data:
+                client_event.error = request.data['error']
+            if 'client_software_version' in request.data:
+                client_event.client_software_version = request.data['client_software_version']
+            if 'client_os' in request.data:
+                client_event.client_os = request.data['client_os']
+            if 'client_os_version' in request.data:
+                client_event.client_os_version = request.data['client_os_version']
+            if 'cpu_utilization_percent' in request.data:
+                client_event.cpu_utilization_percent = request.data['cpu_utilization_percent']
+            if 'available_memory_bytes' in request.data:
+                client_event.available_memory_bytes = request.data['available_memory_bytes']
+            if 'local_timestamp' in request.data:
+                client_event.local_timestamp = request.data['local_timestamp']
+            if 'ip4_address' in request.data:
+                client_event.ip4_address = request.data['ip4_address']
+            if 'ip6_address' in request.data:
+                client_event.ip6_address = request.data['ip6_address']
+            if 'message' in request.data:
+                client_event.message = request.data['message']
+            if 'previous_android_log' in request.data:
+                client_event.previous_android_log = request.data['previous_android_log']
+            if 'new_android_log' in request.data:
+                client_event.new_android_log = request.data['new_android_log']
+            client_event.debugging_messages = json.dumps(request.data, indent=4)
+            client_event.save()
             response = {
                 'status': 'error',
                 'detail': 'event logged',
-                'errors': serializer.errors
+                'errors': serializer.errors,
             }
-            mattermost_url = 'https://pkt.chat/hooks/e16ccf33jiymfgsj6sx64sea8c'
-            mattermost_texts = [
-                "Invalid error logged by {}".format(self.get_client_ip(request)),
-                "**Inbound error:**",
-                "```",
-                json.dumps(request.data, indent=4),
-                "```",
-                # "**Error:***",
-                # "```",
-                # json.dumps(serializer.errors, indent=4),
-                # "```"
-            ]
-            mattermost_data = {
-                "text": "\n".join(mattermost_texts)
-            }
-            mattermost_headers = {
-                'Host': 'pkt.chat',
-                'Content-Type': 'application/json',
-            }
-            requests.post(mattermost_url, json=mattermost_data, headers=mattermost_headers)
-            '''
-            with open('{}buggy_log_input.txt'.format(settings.BASE_DIR), 'a+') as file:
-                file.write("=====================\n")
-                file.write("New error logged")
-                file.write(str(request.data).encode("ascii", "ignore").decode('ascii'))
-                file.write("\n")
-                file.write(json.dumps(serializer.errors))
-                file.write("\n\n")
-            '''
-            return Response(response)
         else:
-            serializer.save()
+            client_event = serializer.save()
             response = {
                 'status': 'success',
                 'detail': 'event logged',
             }
-            return Response(response)
+
+        mattermost_text = "App client {}: {}\npubkey: {}, username: {}".format(
+            log_type,
+            request.build_absolute_uri(reverse(
+                'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
+                args=(client_event.pk, )
+            )),
+            client_event.public_key,
+            client_event.username
+        )
+        mattermost = MattermostChatApi(settings.MATTERMOST_HOST, settings.MATTERMOST_ENDPOINT)
+        mattermost.send_message(mattermost_text)
+        return Response(response)
 
 
 class ClientSoftwareVersionRestApiView(GenericAPIView):

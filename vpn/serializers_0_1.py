@@ -34,6 +34,7 @@ class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSeri
         model = VpnClientEvent
         fields = [
             'public_key',
+            'username',
             'error',
             'client_software_version',
             'client_os',
@@ -50,6 +51,7 @@ class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSeri
         ]
         example = {
             'public_key': 'lbqr0rzyc2tuysw3w8gfr95u68kujzlq7zht5hyf452u8yshr120.k',
+            'username': 'uniqueusername',
             'error': 'connection_failed',
             'client_software_version': 'android-anode-0.9.11a',
             'client_os': 'Android',

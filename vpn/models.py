@@ -45,6 +45,7 @@ class VpnClientEvent(models.Model):
     ]
 
     public_key = models.CharField(max_length=64, null=True, blank=True)
+    username = models.CharField(max_length=100, null=True, blank=True)
     error = models.CharField(max_length=64)
     client_software_version = models.CharField(max_length=32)
     client_os = models.CharField(max_length=32)
@@ -536,3 +537,29 @@ class NetworkExitRange(models.Model):
     def __str__(self):
         """Represent as String."""
         return "{} - {}".format(self.min, self.max)
+
+
+class MattermostChatApi:
+    """Mattermost Chat API."""
+
+    host = None
+    endpoint = None
+
+    def __init__(self, host, endpoint):
+        """Initialize Mattermost."""
+        self.host = host
+        self.endpoint = endpoint
+
+    def send_message(self, text):
+        """Send a text message."""
+        headers = {
+            'Host': self.host,
+            'Content-Type': 'application/json',
+        }
+        data = {"text": text}
+        response = requests.post(
+            self.endpoint,
+            json=data,
+            headers=headers
+        )
+        return response

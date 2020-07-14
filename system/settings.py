@@ -224,3 +224,7 @@ EMAIL_PORT = aux_settings['email']['port']
 EMAIL_HOST_USER = aux_settings['email']['username']
 EMAIL_HOST_PASSWORD = aux_settings['email']['password']
 EMAIL_USE_TLS = aux_settings['email']['useTLS']
+
+
+MATTERMOST_HOST = aux_settings['mattermost']['host']
+MATTERMOST_ENDPOINT = aux_settings['mattermost']['endpoint']
