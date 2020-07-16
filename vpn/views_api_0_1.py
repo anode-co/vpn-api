@@ -33,6 +33,8 @@ import ipaddress
 from django.utils import timezone
 from django.conf import settings
 from django.urls import reverse
+import os
+from django.core.mail import send_mail
 
 
 def method_permission_classes(classes):
@@ -149,6 +151,32 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         )
         mattermost = MattermostChatApi(settings.MATTERMOST_HOST, settings.MATTERMOST_ENDPOINT)
         mattermost.send_message(mattermost_text)
+        # Output to text:
+        output_filename = os.path.join(settings.BASE_DIR, 'buggy_log_input.txt')
+        outputs = [
+            '=================================',
+            'New error: {}'.format(request.build_absolute_uri(reverse(
+                'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
+                args=(client_event.pk, )
+            ))),
+            'Datetime: {}'.format(timezone.now().strftime('%Y-%m-%d %H:%I:%S')),
+            'Input: ',
+            json.dumps(request.data, indent=3)
+        ]
+        output = "\n".join(outputs)
+        with open(output_filename, 'w') as f:
+            f.write(output)
+        send_mail(
+            'New VPN App error log',
+            output,
+            settings.DEFAULT_FROM_EMAIL,
+            [
+                'adonis@anode.co',
+                'cjd@anode.co',
+                'dimitris@commonslab.gr '
+            ],
+            fail_silently=False
+        )
         return Response(response)
 
 

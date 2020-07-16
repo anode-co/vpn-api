@@ -1,0 +1,15 @@
+=================================
+New error: http://127.0.0.1:8002/admin/vpn/vpnclientevent/381/change/
+Datetime: 2020-07-16 10:10:43
+Input: 
+{
+   "public_key": "test",
+   "username": "",
+   "error": "new error",
+   "client_software_version": "3",
+   "client_os": "android",
+   "message": "test",
+   "debugging_messages": "haha",
+   "local_timestamp": "2020-07-16 10:42:30",
+   "ip4_address": "127.0.0.1"
+}
