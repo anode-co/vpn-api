@@ -1,5 +1,6 @@
 # Ignore local configuration
 system/config.json
+buggy_log_input.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
