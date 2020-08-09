@@ -166,6 +166,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         output = "\n".join(outputs)
         with open(output_filename, 'w') as f:
             f.write(output)
+        '''
         send_mail(
             'New VPN App error log',
             output,
@@ -177,6 +178,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
             ],
             fail_silently=False
         )
+        '''
         return Response(response)
 
 
