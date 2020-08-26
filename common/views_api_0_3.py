@@ -31,7 +31,7 @@ from .permissions import (
     CsrfExemptMixin,
     HttpCjdnsAuthorizationRequiredMixin,
 )
-from django.contrib.auth import authenticate  # TODO: Remove for wallet integration
+from django.contrib.auth import authenticate, logout  # TODO: Remove for wallet integration
 
 
 class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
@@ -133,6 +133,53 @@ class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, 
                 user.public_key = self.auth_verified_cjdns_public_key
                 user.save()
             return Response(None, status.HTTP_200_OK)
+        else:
+            return Response(None, status.HTTP_401_UNAUTHORIZED)
+
+
+class AccountLogoutApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
+    """Log out - disconnect the CJDNS public key.
+
+    Disconnect the existing cjdns public key from the user's account
+    """
+
+    serializer_class = UserEmailLoginSerializer
+
+    @swagger_auto_schema(responses={200: GenericResponseSerializer})
+    def post(self, request):
+        """POST method."""
+        input_serializer = self.serializer_class(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        email = input_serializer.data['email_or_username']
+        username = input_serializer.data['email_or_username']
+        password = input_serializer.data['password']
+        is_authorized = False
+
+        print("Attempting to authorize email={}, password={}".format(email, password))
+        cjdns_public_key = self.auth_verified_cjdns_public_key
+        user = authenticate(email=email, password=password, public_key=cjdns_public_key)
+        if user is None:
+            print("Attempting to authorize username={}, password={}".format(username, password))
+            # Can't use authorization system because we originally
+            # constructed the User to not use a username
+            try:
+                user = User.objects.get(username=username)
+                if user.check_password(password) is True:
+                    is_authorized = True
+            except User.DoesNotExist:
+                is_authorized = False
+        else:
+            is_authorized = True
+
+        if is_authorized is True:
+            user.public_key = None
+            user.save()
+            response_data = {
+                'status': 'success',
+            }
+            response = GenericResponseSerializer(data=response_data)
+            response.is_valid()
+            return Response(response.data, status.HTTP_200_OK)
         else:
             return Response(None, status.HTTP_401_UNAUTHORIZED)
 
@@ -257,7 +304,26 @@ class AccountPublicKeyApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIVie
 
     def get(self, request, username):
         """Get the user's public key."""
+        cjdns_public_key = self.auth_verified_cjdns_public_key
+        user = get_object_or_404(User, username=username, public_key=cjdns_public_key)
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    def post(self, request, username):
+        """Add cjdns public key to user."""
+        cjdns_public_key = self.auth_verified_cjdns_public_key
         user = get_object_or_404(User, username=username)
+        user.public_key = cjdns_public_key
+        user.save()
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    def delete(self, request, username):
+        """Detach cjdns public key from user."""
+        cjdns_public_key = self.auth_verified_cjdns_public_key
+        user = get_object_or_404(User, username=username, public_key=cjdns_public_key)
+        user.public_key = None
+        user.save()
         serializer = self.get_serializer(user)
         return Response(serializer.data)
 
