@@ -5,7 +5,6 @@ from .views_api_0_3 import (
     CreateAccountConfirmationStatusApiView,
     SetInitialAccountPasswordApiView,
     AccountLoginApiView,
-    AccountLogoutApiView,
     SetEmailAddressApiView,
     AccountPublicKeyApiView,
     UsernameApiView,
@@ -21,7 +20,6 @@ urlpatterns = [
     path('vpn/accounts/<password_recovery_token>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
 
     path('vpn/accounts/authorize/', AccountLoginApiView.as_view(), name="account_login"),
-    path('vpn/accounts/authorize/logout/', AccountLogoutApiView.as_view(), name="account_login"),
 
     path('vpn/accounts/<username>/initialemail/', SetEmailAddressApiView.as_view(), name="account_register_email"),
     path('vpn/accounts/<username>/initialpassword/', SetInitialAccountPasswordApiView.as_view(), name="account_set_initial_password"),
