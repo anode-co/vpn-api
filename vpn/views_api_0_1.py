@@ -129,7 +129,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
             client_event.debugging_messages = json.dumps(request.data, indent=4)
             client_event.save()
             response = {
-                'status': 'error',
+                'status': 'success',
                 'detail': 'event logged',
                 'errors': serializer.errors,
             }
