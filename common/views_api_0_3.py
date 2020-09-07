@@ -24,6 +24,7 @@ from .serializers_0_3 import (
     UserPublicKeyLoginSerializer,
     EmailConfirmationSerializer,
     UsernameSerializer,
+    UsernameEmailSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -103,7 +104,7 @@ class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, 
 
     serializer_class = UserEmailLoginSerializer
 
-    @swagger_auto_schema(responses={401: None, 200: None})
+    @swagger_auto_schema(responses={401: GenericResponseSerializer, 200: UsernameSerializer})
     def post(self, request):
         """GET method."""
         input_serializer = self.serializer_class(data=request.data)
@@ -132,9 +133,20 @@ class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, 
             if user.public_key != self.auth_verified_cjdns_public_key:
                 user.public_key = self.auth_verified_cjdns_public_key
                 user.save()
-            return Response(None, status.HTTP_200_OK)
+            output_data = {
+                'username': user.username
+            }
+            output_serializer = UsernameSerializer(data=output_data)
+            output_serializer.is_valid()
+            return Response(output_serializer.data, status.HTTP_200_OK)
         else:
-            return Response(None, status.HTTP_401_UNAUTHORIZED)
+            output_data = {
+                'status': 'error',
+                'message': 'Invalid credentials'
+            }
+            output_serializer = GenericResponseSerializer(data=output_data)
+            output_serializer.is_valid()
+            return Response(output_serializer.data, status.HTTP_401_UNAUTHORIZED)
 
     def delete(self, request):
         """POST method."""

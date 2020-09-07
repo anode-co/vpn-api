@@ -285,7 +285,6 @@ login_method = 'post'
 login_data = {'username': 'dimitris'}
 login_response = secure_request(login_url, login_method, login_data)
 
-
 email_url = 'http://127.0.0.1:8002/api/0.3/vpn/accounts/dimitris/initialemail/'
 email_method = 'post'
 email_data = {'email': 'backupbrain@gmail.com'}

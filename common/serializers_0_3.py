@@ -19,6 +19,13 @@ class UsernameSerializer(serializers.Serializer):
     username = serializers.CharField()
 
 
+class UsernameEmailSerializer(serializers.Serializer):
+    """Serialize a username and email."""
+
+    email = serializers.EmailField()
+    username = serializers.CharField()
+
+
 class UserEmailLoginSerializer(serializers.Serializer):
     """Serialize the email field of the User."""
 
