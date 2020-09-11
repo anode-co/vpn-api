@@ -94,12 +94,12 @@ class CreateUserSerializer(serializers.Serializer):
             user = User.objects.get(username=username)
             print("user already exists")
             raise serializers.ValidationError("This username is already registered")
-        except User.DoesNotExist:
-            print("user does not yet exist")
-            pass
         except user.MultipleObjectsReturned:
             print("multiple usernames already exist")
             raise serializers.ValidationError("This username is already registered")
+        except User.DoesNotExist:
+            print("user does not yet exist")
+            pass
         return username
 
     def save(self, cjdns_public_key, commit=True):
@@ -258,3 +258,32 @@ class PasswordResetInitializationSerializer(serializers.ModelSerializer):
         fields = [
             'password_reset_status_url'
         ]
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serialize the  password reset request."""
+
+    current_password = serializers.CharField()
+    new_password = serializers.CharField()
+
+    user = None
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the  serializer."""
+        print("initializing the serializer")
+        self.user = kwargs.pop('user')
+        super(ChangePasswordSerializer, self).__init__(*args, **kwargs)
+
+    def validate_current_password(self, current_password):
+        """Validate the current password."""
+        if self.user.check_password(current_password) is False:
+            raise serializers.ValidationError("The username and/or password combination does not match")
+        return current_password
+
+    def save(self, commit=True):
+        """Save the user's new password."""
+        new_password = self.validated_data['new_password']
+        self.user.set_password(new_password)
+        if commit is True:
+            self.user.save()
+        return self.user

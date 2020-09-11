@@ -24,7 +24,7 @@ from .serializers_0_3 import (
     UserPublicKeyLoginSerializer,
     EmailConfirmationSerializer,
     UsernameSerializer,
-    UsernameEmailSerializer,
+    ChangePasswordSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -33,6 +33,12 @@ from .permissions import (
     HttpCjdnsAuthorizationRequiredMixin,
 )
 from django.contrib.auth import authenticate  # TODO: Remove for wallet integration
+from rest_framework.exceptions import NotFound
+
+
+def error404(request, exception, template_name=None):
+    """Custom 404 handler."""
+    raise NotFound(detail="Resource not found", code=404)
 
 
 class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
@@ -162,6 +168,46 @@ class AccountLoginApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, 
         return Response(response.data, status.HTTP_200_OK)
 
 
+class AccountChangePasswordApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
+    """User attempts to change their password while logged in.
+
+    The user must provide their existing email and password and
+    must already be logged in - that is - their cjdns public key
+    must be attached to an account.
+    """
+
+    serializer_class = ChangePasswordSerializer
+
+    @swagger_auto_schema(responses={400: GenericResponseSerializer, 401: GenericResponseSerializer, 200: GenericResponseSerializer})
+    def post(self, request, username):
+        """Change password.
+
+        (REQUIRES AUTHORIZATION). The user changes their email and password.
+        """
+        user = None
+        try:
+            user = User.objects.get(username=username, public_key=self.auth_verified_cjdns_public_key)
+        except User.DoesNotExist:
+            output_data = {
+                'status': 'error',
+                'message': 'Invalid credentials'
+            }
+            output_serializer = GenericResponseSerializer(data=output_data)
+            output_serializer.is_valid()
+            return Response(output_serializer.data, status.HTTP_401_UNAUTHORIZED)
+
+        input_serializer = self.serializer_class(data=request.data, user=user)
+        input_serializer.is_valid(raise_exception=True)
+        input_serializer.save()
+        output_data = {
+            'status': 'success',
+            'message': 'Password changed'
+        }
+        output_serializer = GenericResponseSerializer(data=output_data)
+        output_serializer.is_valid()
+        return Response(output_serializer.data)
+
+
 class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
     """When a new email address is submitted.
 
@@ -171,7 +217,7 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
     related to account management.
     """
 
-    serializer_class = UserAccountCreatedSerializer
+    serializer_class = CreateUserSerializer
 
     @swagger_auto_schema(responses={400: 'Invalid request', 201: UserAccountCreatedSerializer})
     def post(self, request):
@@ -183,12 +229,12 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
         Meanwhile, the "Check status of new email registration" will reply with
         {"status":"pending"} until the user has opened the confirm URL.
         """
-        input_serializer = CreateUserSerializer(data=request.data)
+        input_serializer = self.get_serializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         user = input_serializer.save(self.auth_verified_cjdns_public_key)
         # user.send_account_registration_confirmation_email(request)
         # user.account_confirmation_status_url = user.get_account_confirmation_status_url(request)
-        output_serializer = self.get_serializer(user)
+        output_serializer = UserAccountCreatedSerializer(user)
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 

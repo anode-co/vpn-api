@@ -18,6 +18,10 @@ from django.urls import path, include
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
+# from django.conf.urls import (
+#     handler404,
+# )
+# from common.views_api_0_3 import error404
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -63,6 +67,8 @@ urlpatterns += [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
+
+handler404 = 'common.views_api_0_3.error404'
 
 admin.site.site_header = 'Anode VPN API Admin'
 admin.site.site_title = 'Anode VPN API Admin Portal'
