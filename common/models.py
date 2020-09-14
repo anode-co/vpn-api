@@ -253,21 +253,25 @@ class PasswordResetRequest(models.Model):
         self.is_complete = True
         self.save()
 
-    def get_password_reset_status_url(self, request):
+    def get_password_reset_status_url(self, request, email_or_username):
         """Return the reset password confirmation status API endpoint."""
-        return request.build_absolute_uri(reverse('common_api_0_3_account_management:password_reset', kwargs={'password_recovery_token': self.user.password_recovery_token}))
+        return request.build_absolute_uri(reverse('common_api_0_3_account_management:password_reset', kwargs={'email_or_username': email_or_username}))
 
     def get_password_reset_confirmation_url(self, request):
         """Return the reset password confirmation status API endpoint."""
         return request.build_absolute_uri(reverse('common:confirm_reset_password_request_with_token', kwargs={'username': self.user.username, 'password_reset_token': self.password_reset_token}))
-
+    '''
+    def get_password_reset_status_url_with_token(self, request):
+        """Return the reset password confirmation status API endpoint."""
+        return request.build_absolute_uri(reverse('common_api_0_3_account_management:password_reset', kwargs={'password_recovery_token': self.user.password_recovery_token}))
+    '''
     def generate_token(self):
         """Generate a token."""
         token_length = 64
         alphabet = string.digits + string.ascii_lowercase
         self.password_reset_token = ''.join(random.choice(alphabet) for i in range(token_length))
 
-    def send_password_reset_confirmation_email(self, request, template_set_name='common/emails/customer__reset_password_request', fail_silently=False):
+    def send_password_reset_confirmation_email(self, request, email_or_username, template_set_name='common/emails/customer__reset_password_request', fail_silently=False):
         """Send an email to the user confirming their password reset request."""
         if self.password_reset_token is None:
             self.generate_token()

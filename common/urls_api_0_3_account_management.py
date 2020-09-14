@@ -18,7 +18,8 @@ urlpatterns = [
     path('vpn/accounts/username/', UsernameApiView.as_view(), name="Generate a new username"),
     path('vpn/accounts/<username>/confirmstatus/', CreateAccountConfirmationStatusApiView.as_view(), name="check_account_registration_confirmation"),
     path('vpn/accounts/<username>/setinitialpassword/', SetInitialAccountPasswordApiView.as_view(), name="set_initial_account_password"),
-    path('vpn/accounts/<password_recovery_token>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
+    # path('vpn/accounts/<password_recovery_token>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
+    path('vpn/accounts/<email_or_username>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
 
     path('vpn/accounts/authorize/', AccountLoginApiView.as_view(), name="account_login"),
 

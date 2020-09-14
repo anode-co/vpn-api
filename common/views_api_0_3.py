@@ -351,8 +351,8 @@ class AccountPublicKeyApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIVie
         serializer = self.get_serializer(user)
         return Response(serializer.data)
 
-
-class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
+'''
+class CreateResetPasswordWithRecoveryTokenRequestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Create a password reset request."""
 
     serializer_class = PasswordResetInitializationSerializer
@@ -399,6 +399,86 @@ class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
         PasswordResetRequest.objects.filter(user=user).delete()
         password_reset_token = user.create_password_request()
         password_reset_token.send_password_reset_confirmation_email(request)
-        password_reset_token.password_reset_status_url = password_reset_token.get_password_reset_status_url(request)
+        password_reset_token.password_reset_status_url = password_reset_token.get_password_reset_status_url_with_token(request)
+        serializer = self.serializer_class(password_reset_token)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+'''
+
+
+class CreateResetPasswordRequestApiView(GenericAPIView):
+    """Create a password reset request."""
+
+    serializer_class = PasswordResetInitializationSerializer
+
+    def get_user(self, email_or_username):
+        """Get the user with this email or username."""
+        user = None
+        try:
+            user = User.objects.get(email=email_or_username)
+        except User.DoesNotExist:
+            user = User.objects.get(username=email_or_username)
+        except User.DoesNotExist:
+            pass
+        return user
+
+    @swagger_auto_schema(responses={200: PasswordResetConfirmedSerializer, 202: PasswordResetPendingSerializer, 404: 'Not Found'})
+    def get(self, request, email_or_username):
+        """Check the status of a password reset request.
+
+        (REQUIRES AUTHORIZATION). When the user goes to the web page provided in the password reset
+        two factor authorization email, sent with the
+        "Initialize a password reset request" method, the status of their
+        password reset request will change from "pending" to "success."
+        When the status changes to "success," the email's appSecretKey
+        will be revealed one time only and the password reset request will
+        be destroyed.
+        """
+        user = self.get_user(email_or_username)
+        if user is None:
+            raise Http404
+
+        now = timezone.now()
+        password_reset_token = PasswordResetRequest.objects.filter(user=user, expires_on__gt=now).order_by('-created_at').first()
+        if password_reset_token is None:
+            raise Http404
+        http_status = status.HTTP_201_CREATED
+        output = {'status': 'pending'}
+        if password_reset_token.is_complete is True:
+            http_status = status.HTTP_200_OK
+            output = {'status': 'complete', 'backup_wallet_password': password_reset_token.user.backup_wallet_password}
+            # for security reasons, delete any related PasswordResetRequests
+            PasswordResetRequest.objects.filter(user=user).delete()
+        serializer = PasswordResetConfirmedSerializer(data=output)
+        serializer.is_valid()
+        return Response(serializer.data, status=http_status)
+
+    @swagger_auto_schema(responses={201: PasswordResetInitializationSerializer, 404: 'Not Found'}, request_body=None)
+    def post(self, request, email_or_username):
+        """Initialize a password reset request.
+
+        (REQUIRES AUTHORIZATION). When password registration request is created,
+        the user with the email or username email_or_username is sent a
+        confirmation email as a two factor authentication.
+        The user must confirm their email
+        in  order to release the appSecretKey to the VPN app, which
+        can be used to decrypt the app wallet and change the password.
+        """
+        user = self.get_user(email_or_username)
+        if user is None:
+            raise Http404
+
+        # for securtiy reasons, delete all previous password reset requests
+        PasswordResetRequest.objects.filter(user=user).delete()
+        password_reset_token = user.create_password_request()
+        if user.email is None:
+            output = {
+                'status': 'failed',
+                'message': 'There is no email address associated with this account'
+            }
+            serializer = GenericResponseSerializer(data=output)
+            serializer.is_valid()
+            return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
+        password_reset_token.send_password_reset_confirmation_email(request, email_or_username)
+        password_reset_token.password_reset_status_url = password_reset_token.get_password_reset_status_url(request, email_or_username)
         serializer = self.serializer_class(password_reset_token)
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
