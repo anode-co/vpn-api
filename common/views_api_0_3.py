@@ -25,6 +25,7 @@ from .serializers_0_3 import (
     EmailConfirmationSerializer,
     UsernameSerializer,
     ChangePasswordSerializer,
+    PasswordResetChangePasswordSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from django.utils import timezone
@@ -405,7 +406,7 @@ class CreateResetPasswordWithRecoveryTokenRequestApiView(HttpCjdnsAuthorizationR
 '''
 
 
-class CreateResetPasswordRequestApiView(GenericAPIView):
+class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Create a password reset request."""
 
     serializer_class = PasswordResetInitializationSerializer
@@ -444,10 +445,15 @@ class CreateResetPasswordRequestApiView(GenericAPIView):
         http_status = status.HTTP_201_CREATED
         output = {'status': 'pending'}
         if password_reset_token.is_complete is True:
-            http_status = status.HTTP_200_OK
-            output = {'status': 'complete', 'backup_wallet_password': password_reset_token.user.backup_wallet_password}
-            # for security reasons, delete any related PasswordResetRequests
-            PasswordResetRequest.objects.filter(user=user).delete()
+            if password_reset_token.is_seen is False:
+                http_status = status.HTTP_200_OK
+                output = {'status': 'complete', 'password_reset_token': password_reset_token.password_reset_token}
+                # for security reasons, delete any related PasswordResetRequests
+                # PasswordResetRequest.objects.filter(user=user).delete()
+                PasswordResetRequest.objects.filter(user=user).update(is_seen=True)
+            else:
+                raise Http404
+
         serializer = PasswordResetConfirmedSerializer(data=output)
         serializer.is_valid()
         return Response(serializer.data, status=http_status)
@@ -482,3 +488,27 @@ class CreateResetPasswordRequestApiView(GenericAPIView):
         password_reset_token.password_reset_status_url = password_reset_token.get_password_reset_status_url(request, email_or_username)
         serializer = self.serializer_class(password_reset_token)
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
+
+class ResetPasswordChangeApiView(GenericAPIView):
+    """Create a password reset request."""
+
+    serializer_class = PasswordResetChangePasswordSerializer
+
+    @swagger_auto_schema(responses={200: GenericResponseSerializer})
+    def post(self, request, email_or_username):
+        """Change password.
+
+        (REQUIRES BACKUP PASSWORD). The user changes their email and password.
+        """
+        print(email_or_username)
+        input_serializer = self.serializer_class(data=request.data, email_or_username=email_or_username)
+        input_serializer.is_valid(raise_exception=True)
+        input_serializer.save()
+        output_data = {
+            'status': 'success',
+            'message': 'Password changed'
+        }
+        output_serializer = GenericResponseSerializer(data=output_data)
+        output_serializer.is_valid()
+        return Response(output_serializer.data)

@@ -188,7 +188,7 @@ class PasswordResetConfirmedSerializer(serializers.Serializer):
     ]
 
     status = serializers.ChoiceField(choices=STATUS_CHOICES)
-    backup_wallet_password = serializers.CharField(allow_blank=True, allow_null=True)
+    password_reset_token = serializers.CharField(allow_blank=True, allow_null=True)
 
 
 class UserPublicKeySerializer(serializers.ModelSerializer):
@@ -286,4 +286,42 @@ class ChangePasswordSerializer(serializers.Serializer):
         self.user.set_password(new_password)
         if commit is True:
             self.user.save()
+        return self.user
+
+
+class PasswordResetChangePasswordSerializer(serializers.Serializer):
+    """Set a new password for a user who forgot theirs."""
+
+    password_reset_token = serializers.CharField()
+    new_password = serializers.CharField()
+
+    email_or_username = None
+    user = None
+    password_reset_request = None
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the  serializer."""
+        self.email_or_username = kwargs.pop('email_or_username')
+        print(self.email_or_username)
+        super(self.__class__, self).__init__(*args, **kwargs)
+
+    def validate_password_reset_token(self, password_reset_token):
+        """Validate the current password."""
+        try:
+            reset_request = PasswordResetRequest.objects.select_related('user').get(password_reset_token=password_reset_token, user__email=self.email_or_username)
+        except PasswordResetRequest.DoesNotExist:
+            reset_request = PasswordResetRequest.objects.select_related('user').get(password_reset_token=password_reset_token, user__username=self.email_or_username)
+        except PasswordResetRequest.DoesNotExist:
+            raise serializers.ValidationError("The username and/or password combination does not match")
+        self.password_reset_request = reset_request
+        self.user = reset_request.user
+        return password_reset_token
+
+    def save(self, commit=True):
+        """Save the user's new password."""
+        new_password = self.validated_data['new_password']
+        self.user.set_password(new_password)
+        if commit is True:
+            self.user.save()
+            self.password_reset_request.delete()
         return self.user

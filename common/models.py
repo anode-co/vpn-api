@@ -4,7 +4,6 @@ from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.auth import login, logout
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
-from fastecdsa import keys, curve
 from django.db.models.signals import pre_save, post_save
 import string
 import random
@@ -240,6 +239,7 @@ class PasswordResetRequest(models.Model):
     password_reset_token = models.CharField(max_length=120, null=True, blank=True)
     expires_on = models.DateTimeField(null=True, blank=True)
     is_complete = models.BooleanField(default=False)
+    is_seen = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     password_reset_status_url = None
