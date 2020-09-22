@@ -246,6 +246,49 @@ class CreateAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin,
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
+class DeleteAccountApiView(HttpCjdnsAuthorizationRequiredMixin, CsrfExemptMixin, GenericAPIView):
+    """Permanently delete an account.
+
+    The user submits their username or email and must provide their
+    cjdns authorization.
+    """
+
+    serializer_class = None
+
+    def get_user(self, email_or_username):
+        """Get the user with this email or username."""
+        user = None
+        print(email_or_username)
+        print(self.auth_verified_cjdns_public_key)
+        try:
+            user = User.objects.get(email=email_or_username, public_key=self.auth_verified_cjdns_public_key)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(username=email_or_username, public_key=self.auth_verified_cjdns_public_key)
+            except User.DoesNotExist:
+                pass
+        return user
+
+    @swagger_auto_schema(responses={200: GenericResponseSerializer})
+    def delete(self, request, email_or_username):
+        """Delete an account.
+
+        (REQUIRES AUTHORIZATION). The user submits their
+        username or email and must provide their cjdns authorization.
+        """
+        user = self.get_user(email_or_username)
+        if user is None:
+            raise Http404
+        user.delete()
+        output = {
+            "status": "success",
+            "message": "user {} has been deleted".format(user.username)
+        }
+        output_serializer = GenericResponseSerializer(data=output)
+        output_serializer.is_valid()
+        return Response(output_serializer.data)
+
+
 class CreateAccountConfirmationStatusApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Check on the status of a password reset process."""
 
@@ -424,9 +467,10 @@ class CreateResetPasswordRequestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
         try:
             user = User.objects.get(email=email_or_username)
         except User.DoesNotExist:
-            user = User.objects.get(username=email_or_username)
-        except User.DoesNotExist:
-            pass
+            try:
+                user = User.objects.get(username=email_or_username)
+            except User.DoesNotExist:
+                pass
         return user
 
     @swagger_auto_schema(responses={200: PasswordResetConfirmedSerializer, 202: PasswordResetPendingSerializer, 404: 'Not Found'})

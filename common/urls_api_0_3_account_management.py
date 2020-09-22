@@ -10,6 +10,7 @@ from .views_api_0_3 import (
     UsernameApiView,
     AccountChangePasswordApiView,
     ResetPasswordChangeApiView,
+    DeleteAccountApiView,
 )
 
 app_name = 'common_api_0_3_account_management'
@@ -22,6 +23,8 @@ urlpatterns = [
     # path('vpn/accounts/<password_recovery_token>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
     path('vpn/accounts/<email_or_username>/password/', CreateResetPasswordRequestApiView.as_view(), name="password_reset"),
     path('vpn/accounts/<email_or_username>/password/change/', ResetPasswordChangeApiView.as_view(), name="password_reset_change_password"),
+
+    path('vpn/accounts/<email_or_username>/delete/', DeleteAccountApiView.as_view(), name="delete_account"),
 
     path('vpn/accounts/authorize/', AccountLoginApiView.as_view(), name="account_login"),
 
