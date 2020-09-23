@@ -91,10 +91,10 @@ class CreateUserSerializer(serializers.Serializer):
     def validate_username(self, username):
         """Validate the email field."""
         try:
-            user = User.objects.get(username=username)
+            User.objects.get(username=username)
             print("user already exists")
             raise serializers.ValidationError("This username is already registered")
-        except user.MultipleObjectsReturned:
+        except User.MultipleObjectsReturned:
             print("multiple usernames already exist")
             raise serializers.ValidationError("This username is already registered")
         except User.DoesNotExist:
