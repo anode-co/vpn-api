@@ -54,6 +54,7 @@ class AuthTestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
         request.data['publicKey'] = self.auth_verified_cjdns_public_key
         return Response(request.data)
 
+
 class ServerErrorTestApiView(GenericAPIView):
     """Test Server error."""
 
