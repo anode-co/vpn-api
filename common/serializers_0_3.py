@@ -270,7 +270,6 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def __init__(self, *args, **kwargs):
         """Initialize the  serializer."""
-        print("initializing the serializer")
         self.user = kwargs.pop('user')
         super(ChangePasswordSerializer, self).__init__(*args, **kwargs)
 
@@ -302,7 +301,6 @@ class PasswordResetChangePasswordSerializer(serializers.Serializer):
     def __init__(self, *args, **kwargs):
         """Initialize the  serializer."""
         self.email_or_username = kwargs.pop('email_or_username')
-        print(self.email_or_username)
         super(self.__class__, self).__init__(*args, **kwargs)
 
     def validate_password_reset_token(self, password_reset_token):

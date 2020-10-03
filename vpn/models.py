@@ -1,12 +1,13 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
-from django.db.models.signals import pre_save
-from django.core.validators import MinValueValidator
+from django.db.models.signals import pre_save, post_save
+from django.core.validators import MinValueValidator, MaxValueValidator
 import json
 import requests
 # from django.utils import timezone
 from common.permissions import CjdnsMessageSigner
+from django.conf import settings
 
 
 class VpnClientEvent(models.Model):
@@ -21,6 +22,7 @@ class VpnClientEvent(models.Model):
     ERROR_CJDROUTE = "cjdroute"
     ERROR_CJDNS_SOCKET = "cjdnsSocket"
     ERROR_VPN_SERVICE = "vpnService"
+    ERROR_APP_USAGE = "appUsage"
     ERROR_OTHER = "other"
 
     ERROR_ROUTE_STOPPED_OLD = "routeStopped"
@@ -46,7 +48,7 @@ class VpnClientEvent(models.Model):
 
     public_key = models.CharField(max_length=64, null=True, blank=True)
     username = models.CharField(max_length=100, null=True, blank=True)
-    error = models.CharField(max_length=64)
+    error = models.CharField(max_length=64, blank=True, null=True)
     client_software_version = models.CharField(max_length=32)
     client_os = models.CharField(max_length=32)
     client_os_version = models.CharField(max_length=32)
@@ -402,9 +404,24 @@ class CjdnsVpnServer(models.Model):
     last_seen_datetime = models.DateTimeField(auto_now=True, blank=True)
     region = models.CharField(max_length=200, null=True, blank=True)
     country_code = models.CharField(max_length=2, choices=COUNTRIES, null=True, blank=True)
+    average_rating = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True)
+    num_ratings = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
     is_fake = models.BooleanField(default=False)
 
     _network_settings = None
+
+    def update_ratings(self):
+        """Update ratings."""
+        ratings = UserCjdnsVpnServerRating.objects.filter(cjdns_vpn_server=self)
+        self.num_ratings = len(ratings)
+        if self.num_ratings > 0:
+            total_rating = 0
+            for rating in ratings:
+                total_rating += rating.rating
+            self.average_rating = total_rating / self.num_ratings
+        else:
+            self.average_rating = None
+        self.save()
 
     def secure_api_request(self, url, data):
         """Make an API call to the server."""
@@ -413,8 +430,8 @@ class CjdnsVpnServer(models.Model):
             self.authorization_server_url,
             self.AUTHORIZATION_ENDPOINT
         )
-        print(data)
-        print("from server: {}".format(url))
+        # print(data)
+        # print("from server: {}".format(url))
         if data is None:
             data_string = ''
         else:
@@ -426,13 +443,13 @@ class CjdnsVpnServer(models.Model):
             'Authorization': 'cjdns {}'.format(signature)
         }
         response = requests.post(url, data=data_string, headers=headers)
-        print(response)
-        print(response.text)
+        # print(response)
+        # print(response.text)
         return response
 
     def get_api_request_authorization(self, client_public_key, date):
         """Get an authorization request."""
-        print("asking to authorize {}".format(client_public_key))
+        # print("asking to authorize {}".format(client_public_key))
         data = {
             'clientPublicKey': client_public_key,
             'date': date
@@ -537,6 +554,24 @@ class NetworkExitRange(models.Model):
     def __str__(self):
         """Represent as String."""
         return "{} - {}".format(self.min, self.max)
+
+
+class UserCjdnsVpnServerRating(models.Model):
+    """User Rating for a CjdnsVpnServer."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    cjdns_vpn_server = models.ForeignKey(CjdnsVpnServer, on_delete=models.CASCADE)
+    rating = models.SmallIntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)])
+    created_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def post_save(cls, sender, instance, created, *args, **kwargs):
+        """Pre-save cleanup."""
+        cjdns_vpn_server = instance.cjdns_vpn_server
+        cjdns_vpn_server.update_ratings()
+
+
+post_save.connect(UserCjdnsVpnServerRating.post_save, sender=UserCjdnsVpnServerRating)
 
 
 class MattermostChatApi:

@@ -7,7 +7,8 @@ from .models import (
     CjdnsVpnServer,
     CjdnsVpnServerPeeringLine,
     CjdnsVpnNetworkSettings,
-    NetworkExitRange
+    NetworkExitRange,
+    UserCjdnsVpnServerRating,
 )
 
 
@@ -179,6 +180,8 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
             # 'peering_lines',
             'online_since_datetime',
             'last_seen_datetime',
+            'average_rating',
+            'num_ratings',
             'is_fake'
         ]
         example = {
@@ -232,3 +235,60 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
         vpn_server._network_settings = network_settings
 
         return vpn_server
+
+
+class VpnRateServerSerializer(serializers.ModelSerializer):
+    """Rate a VPN."""
+
+    user = None
+    cjdns_vpn_server = None
+
+    class Meta:
+        """Meta Information."""
+
+        model = UserCjdnsVpnServerRating
+        fields = [
+            'rating',
+        ]
+        example = {
+            'rating': 3,
+        }
+
+    def __init__(self, *args, **kwargs):
+        """Initialize."""
+        self.user = kwargs.pop('user')
+        self.cjdns_vpn_server = kwargs.pop('cjdns_vpn_server')
+        super(VpnRateServerSerializer, self).__init__(*args, **kwargs)
+
+    def create(self, validated_data):
+        """Save rating."""
+        rating = validated_data['rating']
+        try:
+            user_vpn_rating = UserCjdnsVpnServerRating.objects.get(user=self.user, cjdns_vpn_server=self.cjdns_vpn_server)
+        except UserCjdnsVpnServerRating.DoesNotExist:
+            user_vpn_rating = UserCjdnsVpnServerRating()
+            user_vpn_rating.user = self.user
+            user_vpn_rating.cjdns_vpn_server = self.cjdns_vpn_server
+
+        if user_vpn_rating.rating != rating:
+            user_vpn_rating.rating = rating
+            user_vpn_rating.save()
+
+        return user_vpn_rating
+
+
+class VpnServerRatingSerializer(serializers.ModelSerializer):
+    """Rate a VPN."""
+
+    class Meta:
+        """Meta Information."""
+
+        model = CjdnsVpnServer
+        fields = [
+            'average_rating',
+            'num_ratings'
+        ]
+        example = {
+            'rating': 4.5,
+            'num_ratings': 239,
+        }

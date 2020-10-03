@@ -8,6 +8,9 @@ from rest_framework import status
 from ipaddress import ip_address
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from common.models import (
+    User,
+)
 from .models import (
     ClientSoftwareVersion,
     CjdnsVpnServer,
@@ -20,6 +23,8 @@ from .serializers_0_1 import (
     CjdnsVPNServerSerializer,
     VpnServerAuthorizationRequestSerializer,
     VpnServerResponseSerializer,
+    VpnRateServerSerializer,
+    VpnServerRatingSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from common.permissions import (
@@ -34,7 +39,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.urls import reverse
 import os
-from django.core.mail import send_mail
+# from django.core.mail import send_mail
 
 
 def method_permission_classes(classes):
@@ -140,45 +145,46 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
                 'detail': 'event logged',
             }
 
-        mattermost_text = "App client {}: {}\npubkey: {}, username: {}".format(
-            log_type,
-            request.build_absolute_uri(reverse(
-                'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
-                args=(client_event.pk, )
-            )),
-            client_event.public_key,
-            client_event.username
-        )
-        mattermost = MattermostChatApi(settings.MATTERMOST_HOST, settings.MATTERMOST_ENDPOINT)
-        mattermost.send_message(mattermost_text)
-        # Output to text:
-        output_filename = os.path.join(settings.BASE_DIR, 'buggy_log_input.txt')
-        outputs = [
-            '=================================',
-            'New error: {}'.format(request.build_absolute_uri(reverse(
-                'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
-                args=(client_event.pk, )
-            ))),
-            'Datetime: {}'.format(timezone.now().strftime('%Y-%m-%d %H:%I:%S')),
-            'Input: ',
-            json.dumps(request.data, indent=3)
-        ]
-        output = "\n".join(outputs)
-        with open(output_filename, 'w') as f:
-            f.write(output)
-        '''
-        send_mail(
-            'New VPN App error log',
-            output,
-            settings.DEFAULT_FROM_EMAIL,
-            [
-                'adonis@anode.co',
-                'cjd@anode.co',
-                'dimitris@commonslab.gr '
-            ],
-            fail_silently=False
-        )
-        '''
+        if client_event.error != VpnClientEvent.ERROR_APP_USAGE:
+            mattermost_text = "App client {}: {}\npubkey: {}, username: {}".format(
+                log_type,
+                request.build_absolute_uri(reverse(
+                    'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
+                    args=(client_event.pk, )
+                )),
+                client_event.public_key,
+                client_event.username
+            )
+            mattermost = MattermostChatApi(settings.MATTERMOST_HOST, settings.MATTERMOST_ENDPOINT)
+            mattermost.send_message(mattermost_text)
+            # Output to text:
+            output_filename = os.path.join(settings.BASE_DIR, 'buggy_log_input.txt')
+            outputs = [
+                '=================================',
+                'New error: {}'.format(request.build_absolute_uri(reverse(
+                    'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
+                    args=(client_event.pk, )
+                ))),
+                'Datetime: {}'.format(timezone.now().strftime('%Y-%m-%d %H:%I:%S')),
+                'Input: ',
+                json.dumps(request.data, indent=3)
+            ]
+            output = "\n".join(outputs)
+            with open(output_filename, 'w') as f:
+                f.write(output)
+            '''
+            send_mail(
+                'New VPN App error log',
+                output,
+                settings.DEFAULT_FROM_EMAIL,
+                [
+                    'adonis@anode.co',
+                    'cjd@anode.co',
+                    'dimitris@commonslab.gr '
+                ],
+                fail_silently=False
+            )
+            '''
         return Response(response)
 
 
@@ -417,6 +423,31 @@ class CjdnsVpnServerAuthorizationRestApiView(HttpCjdnsAuthorizationRequiredMixin
         if do_logging is True:
             logger.save()
         return Response(serializer.data, status=response_status)
+
+
+class CjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
+    """Rate a VPN Server."""
+
+    queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+    serializer_class = VpnRateServerSerializer
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnServerRatingSerializer})
+    def get(self, request, public_key):
+        """Comment here."""
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=public_key)
+        server_rating_serializer = VpnServerRatingSerializer(vpn_server)
+        return Response(server_rating_serializer.data)
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: VpnServerRatingSerializer})
+    def post(self, request, public_key):
+        """Comment here."""
+        user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
+        vpn_server = get_object_or_404(self.get_queryset(), public_key=public_key)
+        serializer = self.get_serializer(data=request.data, user=user, cjdns_vpn_server=vpn_server)
+        serializer.is_valid(raise_exception=True)
+        serializer.create(serializer.validated_data)
+        server_rating_serializer = VpnServerRatingSerializer(vpn_server)
+        return Response(server_rating_serializer.data, status=status.HTTP_201_CREATED)
 
 
 '''
