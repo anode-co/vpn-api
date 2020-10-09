@@ -16,6 +16,9 @@ from .models import (
     CjdnsVpnServer,
     VpnClientEvent,
     MattermostChatApi,
+    UserCjdnsVpnServerFavorite,
+    NetworkExitRange,
+    CjdnsVpnNetworkSettings,
 )
 from .serializers_0_1 import (
     VpnClientEventSerializer,
@@ -25,12 +28,14 @@ from .serializers_0_1 import (
     VpnServerResponseSerializer,
     VpnRateServerSerializer,
     VpnServerRatingSerializer,
+    VpnFavoriteServerSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from common.permissions import (
     CsrfExemptMixin,
     HasHttpCjdnsAuthorization,
     HttpCjdnsAuthorizationRequiredMixin,
+    HttpCjdnsAuthorizationVerifier,
 )
 from common.serializers_0_3 import GenericResponseSerializer
 from rest_framework_api_key.permissions import HasAPIKey
@@ -234,7 +239,7 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
 class CjdnsVpnServerRestApiView(ModelViewSet):
     """Cjdns VPN Servers."""
 
-    queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+    queryset = CjdnsVpnServer.objects.select_related().filter(is_active=True, is_approved=True)
     serializer_class = CjdnsVPNServerSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = 'public_key'
@@ -253,20 +258,96 @@ class CjdnsVpnServerRestApiView(ModelViewSet):
         vpn_server.send_new_server_email_to_admin(vpn_server)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    '''
+    @swagger_auto_schema(responses={200: GenericResponseSerializer, 400: 'Invalid request'})
+    @method_permission_classes((HasHttpCjdnsAuthorization,))
+    def update(self, request, public_key):
+        """Update a VPN server.
+
+        Update last-seen time
+        """
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request)
+        digest_verifier.is_valid(raise_exception=False)
+        serializer = VpnServerAuthorizationRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            vpn_server = self.get_queryset().get(public_key=digest_verifier.public_key)
+        except CjdnsVpnServer.DoesNotExist:
+            raise Http404
+        vpn_server.save()
+        output = {
+            'status': 'success',
+        }
+        output_serializer = GenericResponseSerializer(data=output)
+        output_serializer.is_valid()
+        return Response(output_serializer.data)
+
+    @swagger_auto_schema(responses={400: 'Invalid request'})
     def list(self, request):
         """List all active VPN Servers."""
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request)
+        digest_verifies = digest_verifier.is_valid(raise_exception=False)
         vpn_servers = self.get_queryset()
+        network_settings = CjdnsVpnNetworkSettings.objects.filter(cjdns_vpn_server__in=vpn_servers)
+        # peering_lines = CjdnsVpnServerPeeringLine.objects.filter(cjdns_vpn_server__in=vpn_servers)
+        exit_ranges = NetworkExitRange.objects.filter(cjdns_vpn_network_settings__in=network_settings)
+
+        vpn_server_lookup = {}
+        for vpn_server in vpn_servers:
+            vpn_server_lookup[vpn_server.pk] = vpn_server
+            vpn_server._peering_lines = []
+            vpn_server._network_settings = None
+        network_settings_lookup = {}
+        for network_setting in network_settings:
+            network_settings_lookup[network_setting.pk] = network_setting
+            network_setting._nat_exit_ranges = []
+            network_setting._client_allocation_ranges = []
+            vpn_server_lookup[network_setting.cjdns_vpn_server_id]._network_settings = network_setting
+        for exit_range in exit_ranges:
+            if exit_range.type == NetworkExitRange.TYPE_NAT_EXIT:
+                network_settings_lookup[exit_range.cjdns_vpn_network_settings_id]._nat_exit_ranges.append(exit_range)
+            elif exit_range.type == NetworkExitRange.TYPE_CLIENT_ALLOCATION:
+                network_settings_lookup[exit_range.cjdns_vpn_network_settings_id]._client_allocation_ranges.append(exit_range)
+
+        '''
+        for peering_line in peering_lines:
+            vpn_server_lookup[network_setting.cjdns_vpn_server_id].peering_lines.append(peering_line)
+        '''
+
+        if digest_verifies is True:
+            favorites = UserCjdnsVpnServerFavorite.objects.filter(user__public_key=digest_verifier.public_key, cjdns_vpn_server__in=vpn_servers)
+            if len(favorites) > 0:
+                favorite_lookup = dict([(f.cjdns_vpn_server_id, f) for f in favorites])
+                for vpn_server in vpn_servers:
+                    favorite = favorite_lookup.get(vpn_server.pk)
+                    if favorite is None:
+                        vpn_server.is_favorite = True
+                    else:
+                        vpn_server.is_favorite = False
+
         serializer = self.get_serializer(vpn_servers, many=True)
         return Response(serializer.data)
 
     @swagger_auto_schema(responses={404: 'Server public key not found'})
-    def retrieve(self, request, server_public_key):
+    def retrieve(self, request, public_key):
         """Retrieve a Cjdns VPN Server from the server's public_key."""
-        vpn_server = get_object_or_404(self.get_queryset(), public_key=server_public_key)
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request)
+        digest_verifies = digest_verifier.is_valid(raise_exception=False)
+        try:
+            vpn_server = self.get_queryset().get(public_key=public_key)
+        except CjdnsVpnServer.DoesNotExist:
+            raise Http404
+        if digest_verifies is True:
+            try:
+                UserCjdnsVpnServerFavorite.objects.get(user__public_key=digest_verifier.public_key, cjdns_vpn_server=vpn_server)
+                vpn_server.is_favorite = True
+            except UserCjdnsVpnServerFavorite.DoesNotExist:
+                vpn_server.is_favorite = False
+        else:
+            vpn_server.is_favorite = None
         serializer = self.get_serializer(vpn_server)
         return Response(serializer.data)
 
+    '''
     @swagger_auto_schema(responses={400: 'Invalid request'})
     @permission_classes((HasAPIKey,))
     def create(self, request):
@@ -434,20 +515,68 @@ class CjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, Generic
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnServerRatingSerializer})
     def get(self, request, public_key):
         """Comment here."""
-        vpn_server = get_object_or_404(self.get_queryset(), public_key=public_key)
+        try:
+            vpn_server = self.get_queryset().get(public_key=public_key)
+        except CjdnsVpnServer.DoesNotExist:
+            raise Http404
         server_rating_serializer = VpnServerRatingSerializer(vpn_server)
         return Response(server_rating_serializer.data)
 
     @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: VpnServerRatingSerializer})
     def post(self, request, public_key):
         """Comment here."""
+        print("posting!")
         user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
-        vpn_server = get_object_or_404(self.get_queryset(), public_key=public_key)
+        try:
+            vpn_server = self.get_queryset().get(public_key=public_key)
+        except CjdnsVpnServer.DoesNotExist:
+            raise Http404
         serializer = self.get_serializer(data=request.data, user=user, cjdns_vpn_server=vpn_server)
         serializer.is_valid(raise_exception=True)
         serializer.create(serializer.validated_data)
         server_rating_serializer = VpnServerRatingSerializer(vpn_server)
         return Response(server_rating_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CjdnsVpnServerFavoriteRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
+    """Rate a VPN Server."""
+
+    queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+    serializer_class = None
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: GenericResponseSerializer})
+    def post(self, request, public_key):
+        """Comment here."""
+        print("poting!")
+        user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
+        print(user)
+        print(public_key)
+        try:
+            vpn_server = self.get_queryset().get(public_key=public_key)
+        except CjdnsVpnServer.DoesNotExist:
+            raise Http404
+        favorite, _ = UserCjdnsVpnServerFavorite.objects.get_or_create(cjdns_vpn_server=vpn_server, user=user)
+        output = {
+            'status': 'success'
+        }
+        output_serializer = GenericResponseSerializer(data=output)
+        output_serializer.is_valid()
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, public_key):
+        """Delete favorite."""
+        # user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
+        try:
+            vpn_server = self.get_queryset().get(public_key=public_key)
+        except CjdnsVpnServer.DoesNotExist:
+            raise Http404
+        UserCjdnsVpnServerFavorite.objects.filter(user__public_key=self.auth_verified_cjdns_public_key, cjdns_vpn_server=vpn_server).delete()
+        output = {
+            'status': 'success'
+        }
+        output_serializer = GenericResponseSerializer(data=output)
+        output_serializer.is_valid()
+        return Response(output_serializer.data)
 
 
 '''

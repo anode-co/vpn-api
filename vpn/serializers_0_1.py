@@ -9,7 +9,17 @@ from .models import (
     CjdnsVpnNetworkSettings,
     NetworkExitRange,
     UserCjdnsVpnServerRating,
+    UserCjdnsVpnServerFavorite,
 )
+import time
+
+
+class TimestampField(serializers.Field):
+    """Timestamp from DateTime."""
+
+    def to_representation(self, value):
+        """Represent datetime as timestamp."""
+        return int(time.mktime(value.timetuple()))
 
 
 class VpnServerResponseSerializer(serializers.Serializer):
@@ -165,6 +175,9 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
 
     network_settings = CjdnsVpnNetworkSettingsSerializer()
     # peering_lines = CjdnsVpnServerPeeringLineSerializer(many=True)
+    is_favorite = serializers.BooleanField(allow_null=True, required=False)
+    last_seen_at = TimestampField()
+    created_at = TimestampField()
 
     class Meta:
         """Meta information for the serializer."""
@@ -182,7 +195,10 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
             'last_seen_datetime',
             'average_rating',
             'num_ratings',
-            'is_fake'
+            'is_fake',
+            'is_favorite',
+            'created_at',
+            'last_seen_at',
         ]
         example = {
             'name': 'Kenny G',
@@ -292,3 +308,36 @@ class VpnServerRatingSerializer(serializers.ModelSerializer):
             'rating': 4.5,
             'num_ratings': 239,
         }
+
+
+class VpnFavoriteServerSerializer(serializers.ModelSerializer):
+    """Add VPN favorite."""
+
+    user = None
+    cjdns_vpn_server = None
+
+    class Meta:
+        """Meta Information."""
+
+        model = UserCjdnsVpnServerRating
+
+    def __init__(self, *args, **kwargs):
+        """Initialize."""
+        self.user = kwargs.pop('user')
+        self.cjdns_vpn_server = kwargs.pop('cjdns_vpn_server')
+        super(VpnRateServerSerializer, self).__init__(*args, **kwargs)
+
+    def create(self, validated_data):
+        """Save rating."""
+        try:
+            user_vpn_rating = UserCjdnsVpnServerFavorite.objects.get(user=self.user, cjdns_vpn_server=self.cjdns_vpn_server)
+        except UserCjdnsVpnServerFavorite.DoesNotExist:
+            user_vpn_favorite = UserCjdnsVpnServerFavorite()
+            user_vpn_favorite.user = self.user
+            user_vpn_favorite.cjdns_vpn_server = self.cjdns_vpn_server
+
+        return user_vpn_rating
+
+    def delete(self):
+        """Save rating."""
+        UserCjdnsVpnServerFavorite.objects.filter(user=self.user, cjdns_vpn_server=self.cjdns_vpn_server).delete()

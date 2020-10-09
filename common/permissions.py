@@ -57,7 +57,7 @@ class HttpCjdnsAuthorizationVerifier:
     """Verify Cjdns signature."""
 
     in_verbose_mode = True
-    raise_exceptions = True
+    raise_exception = True
 
     AUTH_TYPE = 'cjdns'
     AUTHORIZATION_HEADER = 'Authorization'
@@ -84,7 +84,7 @@ class HttpCjdnsAuthorizationVerifier:
 
     def handle_error(self, exception_type):
         """Return False or raise exception."""
-        if self.raise_exceptions is True:
+        if self.raise_exception is True:
             raise exception_type
         else:
             return False
@@ -95,10 +95,10 @@ class HttpCjdnsAuthorizationVerifier:
         expected_base64_digest = base64.b64encode(expected_digest).decode(charset)
         return expected_base64_digest
 
-    def is_valid(self, raise_exceptions=True):
+    def is_valid(self, raise_exception=True):
         """Dispatch the object."""
         self.say("CHECKING HTTP AUTHORIZATION")
-        self.raise_exceptions = raise_exceptions
+        self.raise_exception = raise_exception
         request = self.request
         headers = request.headers
         for header in self.REQUIRED_HEADERS:
@@ -179,7 +179,28 @@ class HttpCjdnsAuthorizationRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
         """Dispatch the object."""
         digest_verifier = HttpCjdnsAuthorizationVerifier(request, args, kwargs)
-        digest_verifier.is_valid(raise_exceptions=True)
+        if digest_verifier.is_valid() is True:
+            self.auth_verified_cjdns_public_key = digest_verifier.public_key
+        else:
+            self.auth_verified_cjdns_public_key = None
+        return super().dispatch(request, *args, **kwargs)
+
+
+class GetHttpCjdnsAuthorizationMixin:
+    """Get a Cavage HTTP Authorization Mixin."""
+
+    # should be Signature keyId=<key-id>,algorithm="rsa-sha256",headers="(request-target) date digest",signature=<signature-string>
+    in_verbose_mode = True
+
+    def say(self, message):
+        """Print debugging messages."""
+        if self.in_verbose_mode is True:
+            print(message)
+
+    def dispatch(self, request, *args, **kwargs):
+        """Dispatch the object."""
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request, args, kwargs)
+        digest_verifier.is_valid(raise_exception=True)
         self.auth_verified_cjdns_public_key = digest_verifier.public_key
         return super().dispatch(request, *args, **kwargs)
 
@@ -193,8 +214,24 @@ class HasHttpCjdnsAuthorization(permissions.BasePermission):
         """Return True if authorization passes signature verification."""
         """Dispatch the object."""
         digest_verifier = HttpCjdnsAuthorizationVerifier(request)
-        digest_verifier.is_valid(raise_exceptions=True)
+        digest_verifier.is_valid(raise_exception=True)
         self.auth_verified_cjdns_public_key = digest_verifier.public_key
+        return True
+
+
+class GetHttpCjdnsAuthorization(permissions.BasePermission):
+    """Get Cavage-10 crypto-signed authorization at the method level."""
+
+    message = ''
+
+    def has_permission(self, request, view):
+        """Return True if authorization passes signature verification."""
+        """Dispatch the object."""
+        digest_verifier = HttpCjdnsAuthorizationVerifier(request)
+        if digest_verifier.is_valid() is True:
+            self.auth_verified_cjdns_public_key = digest_verifier.public_key
+        else:
+            self.auth_verified_cjdns_public_key = None
         return True
 
 

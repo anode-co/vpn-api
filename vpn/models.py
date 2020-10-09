@@ -407,8 +407,11 @@ class CjdnsVpnServer(models.Model):
     average_rating = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True)
     num_ratings = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
     is_fake = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
 
     _network_settings = None
+    is_favorite = None
 
     def update_ratings(self):
         """Update ratings."""
@@ -561,7 +564,7 @@ class UserCjdnsVpnServerRating(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     cjdns_vpn_server = models.ForeignKey(CjdnsVpnServer, on_delete=models.CASCADE)
-    rating = models.SmallIntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)])
+    rating = models.DecimalField(max_digits=2, decimal_places=1, validators=[MinValueValidator(0), MaxValueValidator(5)])
     created_at = models.DateTimeField(auto_now=True)
 
     @classmethod
@@ -572,6 +575,14 @@ class UserCjdnsVpnServerRating(models.Model):
 
 
 post_save.connect(UserCjdnsVpnServerRating.post_save, sender=UserCjdnsVpnServerRating)
+
+
+class UserCjdnsVpnServerFavorite(models.Model):
+    """User Rating for a CjdnsVpnServer."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    cjdns_vpn_server = models.ForeignKey(CjdnsVpnServer, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now=True)
 
 
 class MattermostChatApi:
