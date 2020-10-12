@@ -239,7 +239,7 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
 class CjdnsVpnServerRestApiView(ModelViewSet):
     """Cjdns VPN Servers."""
 
-    queryset = CjdnsVpnServer.objects.select_related().filter(is_active=True, is_approved=True)
+    queryset = CjdnsVpnServer.objects.select_related().filter(is_active=True, is_approved=True, is_fake=False)
     serializer_class = CjdnsVPNServerSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = 'public_key'
