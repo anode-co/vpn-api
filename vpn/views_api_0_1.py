@@ -175,7 +175,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
                 json.dumps(request.data, indent=3)
             ]
             output = "\n".join(outputs)
-            with open(output_filename, 'w') as f:
+            with open(output_filename, 'a') as f:
                 f.write(output)
             '''
             send_mail(
