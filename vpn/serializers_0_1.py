@@ -12,6 +12,10 @@ from .models import (
     UserCjdnsVpnServerFavorite,
 )
 import time
+from rest_framework_bulk import (
+    BulkListSerializer,
+    BulkSerializerMixin,
+)
 
 
 class TimestampField(serializers.Field):
@@ -36,7 +40,21 @@ class VpnServerAuthorizationRequestSerializer(serializers.Serializer):
     date = serializers.IntegerField()
 
 
-class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSerializer):
+class VpnClientEventListSerializer(serializers.ListSerializer):
+    """VPN Client Events."""
+
+    def create(self, validated_data):
+        """Create bulk."""
+        events = []
+        for item in validated_data:
+            event = VpnClientEvent(**item)
+            events.append(event)
+        print(events)
+        VpnClientEvent.objects.bulk_create(events)
+        return events
+
+
+class VpnClientEventSerializer(BulkSerializerMixin, FriendlyErrorMessagesMixin, serializers.ModelSerializer):
     """Serializer for the VpnClientEvent model."""
 
     class Meta:
@@ -59,6 +77,7 @@ class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSeri
             'previous_android_log',
             'new_android_log',
             'debugging_messages',
+            'created_at',
         ]
         example = {
             'public_key': 'lbqr0rzyc2tuysw3w8gfr95u68kujzlq7zht5hyf452u8yshr120.k',
@@ -76,7 +95,9 @@ class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSeri
             'previous_android_log': '1588074618 INFO RandomSeed.c:42 Attempting...',
             'new_android_log': '1588074618 INFO RandomSeed.c:42 Attempting...',
             'debugging_messages': '1588074618 INFO RandomSeed.c:42 Attempting...',
+            'created_at': 1607711504,
         }
+        list_serializer_class = VpnClientEventListSerializer
 
 
 class ClientSoftwareVersionSerializer(serializers.ModelSerializer):
@@ -253,11 +274,102 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
         return vpn_server
 
 
+class VpnRateServerListSerializer(serializers.ListSerializer):
+    """Many InventoryStockItems."""
+
+    user = None
+
+    def __init__(self, *args, **kwargs):
+        """Initialize."""
+        # print(kwargs)
+        # self.user = kwargs.pop('user')
+        super().__init__(*args, **kwargs)
+
+    def create(self, user, validated_data):
+        """Create bulk."""
+        print(validated_data)
+        existing_cjdns_vpn_server_ids = []
+        for item in validated_data:
+            print(item)
+            existing_cjdns_vpn_server_ids.append(item['cjdns_vpn_server'].id)
+
+        user_vpn_ratings = []
+        inserting_cjdns_vpn_rating_ids = []
+        for item in validated_data:
+            # only create the latest rating
+            if item['cjdns_vpn_server'].id not in inserting_cjdns_vpn_rating_ids:
+                user_vpn_rating = UserCjdnsVpnServerRating(**item)
+                user_vpn_rating.user = user
+                user_vpn_ratings.append(user_vpn_rating)
+                inserting_cjdns_vpn_rating_ids.append(item['cjdns_vpn_server'].id)
+
+        UserCjdnsVpnServerRating.objects.filter(user=user, cjdns_vpn_server_id__in=existing_cjdns_vpn_server_ids).delete()
+        UserCjdnsVpnServerRating.objects.bulk_create(user_vpn_ratings)
+        saved_user_vpn_ratings = UserCjdnsVpnServerRating.objects.filter(user=user, cjdns_vpn_server_id__in=existing_cjdns_vpn_server_ids)
+        return saved_user_vpn_ratings
+
+
 class VpnRateServerSerializer(serializers.ModelSerializer):
     """Rate a VPN."""
 
     user = None
-    cjdns_vpn_server = None
+    # cjdns_vpn_server_lookup = None
+
+    class Meta:
+        """Meta Information."""
+
+        model = UserCjdnsVpnServerRating
+        fields = [
+            'cjdns_vpn_server',
+            'rating',
+            'comments',
+            'created_at',
+        ]
+        example = {
+            'cjdns_vpn_server': 1,
+            'rating': 3,
+            'comments': 'Great speed,Friendly service',
+            'created_at': 1607711504,
+        }
+        list_serializer_class = VpnRateServerListSerializer
+
+    def __init__(self, *args, **kwargs):
+        """Initialize."""
+        self.user = kwargs.pop('user')
+        # if 'cjdns_vpn_server_lookup' in kwargs:
+        #     self.cjdns_vpn_server_lookup = kwargs.pop('cjdns_vpn_server_lookup')
+        super(VpnRateServerSerializer, self).__init__(*args, **kwargs)
+
+    def create(self, validated_data, commit=True):
+        """Save rating."""
+        print(validated_data)
+        cjdns_vpn_server = validated_data['cjdns_vpn_server']
+        rating = validated_data['rating']
+        comments = validated_data['comments']
+        created_at = validated_data['created_at']
+
+        user_vpn_rating, created = UserCjdnsVpnServerRating.objects.get_or_create(user=self.user, cjdns_vpn_server=cjdns_vpn_server)
+
+        did_rating_change = False
+        if user_vpn_rating.rating != rating or \
+                user_vpn_rating.comments != comments or \
+                user_vpn_rating.created_at != created_at:
+            did_rating_change = True
+
+        user_vpn_rating.rating = rating
+        user_vpn_rating.comments = comments
+        user_vpn_rating.created_at = created_at
+
+        if commit is True and did_rating_change is True:
+            user_vpn_rating.save()
+
+        return user_vpn_rating
+
+
+class VpnRateServerResponseSerializer(serializers.ModelSerializer):
+    """Rate a VPN."""
+
+    created_at = TimestampField()
 
     class Meta:
         """Meta Information."""
@@ -265,32 +377,14 @@ class VpnRateServerSerializer(serializers.ModelSerializer):
         model = UserCjdnsVpnServerRating
         fields = [
             'rating',
+            'comments',
+            'created_at',
         ]
         example = {
             'rating': 3,
+            'comments': 'Great speed,Friendly service',
+            'created_at': 1607711504,
         }
-
-    def __init__(self, *args, **kwargs):
-        """Initialize."""
-        self.user = kwargs.pop('user')
-        self.cjdns_vpn_server = kwargs.pop('cjdns_vpn_server')
-        super(VpnRateServerSerializer, self).__init__(*args, **kwargs)
-
-    def create(self, validated_data):
-        """Save rating."""
-        rating = validated_data['rating']
-        try:
-            user_vpn_rating = UserCjdnsVpnServerRating.objects.get(user=self.user, cjdns_vpn_server=self.cjdns_vpn_server)
-        except UserCjdnsVpnServerRating.DoesNotExist:
-            user_vpn_rating = UserCjdnsVpnServerRating()
-            user_vpn_rating.user = self.user
-            user_vpn_rating.cjdns_vpn_server = self.cjdns_vpn_server
-
-        if user_vpn_rating.rating != rating:
-            user_vpn_rating.rating = rating
-            user_vpn_rating.save()
-
-        return user_vpn_rating
 
 
 class VpnServerRatingSerializer(serializers.ModelSerializer):

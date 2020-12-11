@@ -238,7 +238,8 @@ class GetHttpCjdnsAuthorization(permissions.BasePermission):
 '''
 # Test CJDNS hash create
 
-from cjdnsadmin.cjdnsadmin import cjdns
+# from cjdnsadmin.cjdnsadmin import cjdns
+from cjdnsadmin.cjdnsadmin import connect
 import base64
 import json
 import hashlib
@@ -327,5 +328,68 @@ email_method = 'post'
 email_data = {'email': 'backupbrain@gmail.com'}
 email_response = secure_request(email_url, email_method, email_data)
 
+
+
+
+
+
+ratings_url = 'http://127.0.0.1:8002/api/0.3/vpn/servers/ratings/'
+ratings_method = 'post'
+ratings_data = [
+    {
+        "public_key": "hsrk7rrwssgpzv7jqxv95wmnx9c435s8jtf0k0w7v4rupymdj9k0.k",
+        "rating": 1.4,
+        "comments": "test1,test2",
+        'created_at': 1607711504
+    },
+    {
+        "public_key": "cmnkylz1dx8mx3bdxku80yw20gqmg0s9nsrusdv0psnxnfhqfmu0.k",
+        "rating": 2.5,
+        "comments": "",
+        "created_at": 1607715287
+    }
+]
+ratings_response = secure_request(ratings_url, ratings_method, ratings_data)
+
+
+ratings_url = 'http://127.0.0.1:8002/api/0.3/vpn/servers/hsrk7rrwssgpzv7jqxv95wmnx9c435s8jtf0k0w7v4rupymdj9k0.k/rating/'
+ratings_method = 'get'
+ratings_data = None
+ratings_data = [
+    {
+        "rating": 1.4,
+        "comments": "test1,test2",
+        'created_at': 1607711504
+    },
+    {
+        "rating": 2.5,
+        "comments": "",
+        "created_at": 1607715287
+    }
+]
+ratings_response = secure_request(ratings_url, ratings_method, ratings_data)
+
+
+events_url = 'http://127.0.0.1:8002/api/0.3/vpn/clients/events/bulk/'
+events_method = 'post'
+events_data = [{
+    "publicKey": "622wwhb3ch0163qlwwqxv4k39hpgj4987dhv0f349099zglu3j90.k",
+    "username": "peru-grayling",
+    "error": "appUsage",
+    "clientSoftwareVersion": "260000209",
+    "clientOs": "Android",
+    "clientOsVersion": "8.1.0",
+    "cpuUtilizationPercent": "0.0",
+    "availableMemoryBytes": "283",
+    "localTimestamp": "2020-12-11T17:52:12.028000Z",
+    "ip4Address": None,
+    "ip6Address": "2c0f:f930:2:b7:9480::",
+    "message": "Events log",
+    "previousAndroidLog": None,
+    "newAndroidLog": None,
+    "debuggingMessages": "2020-12-10T17:42:20.690Z: Resume MainActivity",
+    "createdAt": "2020-12-11T17:52:12.944440Z"
+}]
+events_response = secure_request(events_url, events_method, events_data)
 
 '''

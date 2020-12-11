@@ -3,7 +3,7 @@ six
 django-rest-framework
 django-cors-headers
 drf_yasg
-djangorestframework-api-key
+# djangorestframework-api-key
 drf-friendly-errors
 drf-yasg-examples
 mysqlclient
@@ -11,4 +11,6 @@ djangorestframework-camel-case
 fastecdsa
 django-crispy-forms
 pycrypto
+djangorestframework-bulk
 # pycryptodome
+cjdnsadmin

@@ -565,6 +565,7 @@ class UserCjdnsVpnServerRating(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     cjdns_vpn_server = models.ForeignKey(CjdnsVpnServer, on_delete=models.CASCADE)
     rating = models.DecimalField(max_digits=2, decimal_places=1, validators=[MinValueValidator(0), MaxValueValidator(5)])
+    comments = models.CharField(max_length=200, null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
 
     @classmethod

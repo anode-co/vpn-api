@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'rest_framework_api_key',
+    # 'rest_framework_api_key',
     'drf_yasg',
     'drf_yasg_examples',
     'crispy_forms',
@@ -171,6 +171,7 @@ STATICFILES_DIRS = [
 AUTH_USER_MODEL = 'common.User'
 
 REST_FRAMEWORK = {
+    # 'DATETIME_FORMAT': '%s',
     'DEFAULT_PERMISSION_CLASSES': [
         # "rest_framework_api_key.permissions.HasAPIKey",
         "rest_framework.permissions.AllowAny",
@@ -178,13 +179,13 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100,
     # 'EXCEPTION_HANDLER': 'rest_framework_friendly_errors.handlers.friendly_exception_handler',
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 
     'DEFAULT_RENDERER_CLASSES': (
         'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
         'djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer',
         # Any other renders
     ),
-
     'DEFAULT_PARSER_CLASSES': (
         # If you use MultiPartFormParser or FormParser, we also have a camel case version
         'djangorestframework_camel_case.parser.CamelCaseFormParser',

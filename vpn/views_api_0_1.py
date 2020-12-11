@@ -1,16 +1,6 @@
 import json
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import GenericAPIView
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework.pagination import LimitOffsetPagination
-from rest_framework import status
-from ipaddress import ip_address
-from django.http import Http404
-from django.shortcuts import get_object_or_404
-from common.models import (
-    User,
-)
+import os
+
 from .models import (
     ClientSoftwareVersion,
     CjdnsVpnServer,
@@ -19,6 +9,7 @@ from .models import (
     UserCjdnsVpnServerFavorite,
     NetworkExitRange,
     CjdnsVpnNetworkSettings,
+    UserCjdnsVpnServerRating,
 )
 from .serializers_0_1 import (
     VpnClientEventSerializer,
@@ -28,9 +19,12 @@ from .serializers_0_1 import (
     VpnServerResponseSerializer,
     VpnRateServerSerializer,
     VpnServerRatingSerializer,
+    VpnRateServerResponseSerializer,
     VpnFavoriteServerSerializer,
 )
-from drf_yasg.utils import swagger_auto_schema
+from common.models import (
+    User,
+)
 from common.permissions import (
     CsrfExemptMixin,
     HasHttpCjdnsAuthorization,
@@ -38,14 +32,28 @@ from common.permissions import (
     HttpCjdnsAuthorizationVerifier,
 )
 from common.serializers_0_3 import GenericResponseSerializer
-from rest_framework_api_key.permissions import HasAPIKey
-import ipaddress
-from django.utils import timezone
 from django.conf import settings
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
-import os
-# from django.core.mail import send_mail
+from django.utils import timezone
+from drf_yasg.utils import swagger_auto_schema
+from ipaddress import ip_address
+import ipaddress
+from rest_framework import status
+from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+# from rest_framework_api_key.permissions import HasAPIKey
+from rest_framework_bulk import (
+    ListBulkCreateAPIView,
+    ListBulkCreateUpdateAPIView,
+)
 
+
+# from django.core.mail import send_mail
 
 def method_permission_classes(classes):
     """Custom method decorator to allow for per-method permissions."""
@@ -86,6 +94,12 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
     def get_queryset(self):
         """Override the queryset."""
         return None
+
+    def get_loggable_event(self, request):
+        """GET."""
+        event = VpnClientEvent.objects.last()
+        serializer = VpnClientEventSerializer(event)
+        return Response(serializer.data)
 
     @swagger_auto_schema(responses={400: 'Invalid request'})
     def add_loggable_event(self, request):
@@ -193,6 +207,143 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         return Response(response)
 
 
+class BulkVpnClientEventRestApiModelViewSet(ListBulkCreateAPIView):
+    """Bulk VPN Client Event."""
+
+    serializer_class = VpnClientEventSerializer
+    pagination_class = None
+
+    def get_client_ip(self, request):
+        """Get the client IP address."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+    def get_queryset(self):
+        """Override the queryset."""
+        return None
+
+    @swagger_auto_schema(responses={400: 'Invalid request'})
+    def add_loggable_event(self, request):
+        """Log debugging information.
+
+        Save an event that happened on a VPN API client such as crashes or
+        routing problems.
+        """
+        ip = None
+        str_ip = ''
+        try:
+            ip = ip_address(self.get_client_ip(request))
+            str_ip = str(ip)
+        except ValueError:
+            pass
+
+        data = request.data
+        for item in data:
+            if ip.version == 4:
+                item['ip4_address'] = str_ip
+            else:
+                item['ip6_address'] = str_ip
+
+        serializer = self.get_serializer(data=data)
+
+        log_type = 'error'
+        # serializer.is_valid(raise_exception=True)
+        # invalid request but logged anyway
+        response = {}
+        if serializer.is_valid() is False:
+            for item in data:
+                log_type = 'unparsable error'
+                client_event = VpnClientEvent()
+                if 'public_key' in item:
+                    client_event.public_key = item['public_key']
+                if 'error' in item:
+                    client_event.error = item['error']
+                if 'client_software_version' in item:
+                    client_event.client_software_version = item['client_software_version']
+                if 'client_os' in item:
+                    client_event.client_os = item['client_os']
+                if 'client_os_version' in item:
+                    client_event.client_os_version = item['client_os_version']
+                if 'cpu_utilization_percent' in item:
+                    client_event.cpu_utilization_percent = item['cpu_utilization_percent']
+                if 'available_memory_bytes' in item:
+                    client_event.available_memory_bytes = item['available_memory_bytes']
+                if 'local_timestamp' in item:
+                    client_event.local_timestamp = item['local_timestamp']
+                if 'ip4_address' in item:
+                    client_event.ip4_address = item['ip4_address']
+                if 'ip6_address' in item:
+                    client_event.ip6_address = item['ip6_address']
+                if 'message' in item:
+                    client_event.message = item['message']
+                if 'previous_android_log' in item:
+                    client_event.previous_android_log = item['previous_android_log']
+                if 'new_android_log' in item:
+                    client_event.new_android_log = item['new_android_log']
+                client_event.debugging_messages = json.dumps(item, indent=4)
+                client_event.save()
+            response = {
+                'status': 'success',
+                'detail': 'event logged',
+                'errors': serializer.errors,
+            }
+        else:
+            client_events = serializer.create(serializer.validated_data)
+            response = {
+                'status': 'success',
+                'detail': 'event logged',
+            }
+
+        counter = 0
+        for client_event in client_events:
+            if client_event.error != VpnClientEvent.ERROR_APP_USAGE:
+                mattermost_text = "App client {}: {}\npubkey: {}, username: {}".format(
+                    log_type,
+                    request.build_absolute_uri(reverse(
+                        'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
+                        args=(client_event.pk, )
+                    )),
+                    client_event.public_key,
+                    client_event.username
+                )
+                mattermost = MattermostChatApi(settings.MATTERMOST_HOST, settings.MATTERMOST_ENDPOINT)
+                mattermost.send_message(mattermost_text)
+                # Output to text:
+                output_filename = os.path.join(settings.BASE_DIR, 'buggy_log_input.txt')
+                outputs = [
+                    '=================================',
+                    'New error: {}'.format(request.build_absolute_uri(reverse(
+                        'admin:{}_{}_change'.format(client_event._meta.app_label, client_event._meta.model_name),
+                        args=(client_event.pk, )
+                    ))),
+                    'Datetime: {}'.format(timezone.now().strftime('%Y-%m-%d %H:%I:%S')),
+                    'Input: ',
+                    json.dumps(data[counter], indent=3)
+                ]
+                output = "\n".join(outputs)
+                with open(output_filename, 'a') as f:
+                    f.write(output)
+                '''
+                send_mail(
+                    'New VPN App error log',
+                    output,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [
+                        'adonis@anode.co',
+                        'cjd@anode.co',
+                        'dimitris@commonslab.gr '
+                    ],
+                    fail_silently=False
+                )
+                '''
+                counter += 1
+        return Response(response)
+
+
 class ClientSoftwareVersionRestApiView(GenericAPIView):
     """Client Software Version."""
 
@@ -216,7 +367,7 @@ class ClientSoftwareVersionRestApiView(GenericAPIView):
         return Response(serializer.data)
 
     @swagger_auto_schema(responses={400: 'Invalid request', 201: GenericResponseSerializer})
-    @method_permission_classes((HasAPIKey,))
+    #@method_permission_classes((HasAPIKey,))
     def post(self, request, client_os):
         """Register a new clent software version.
 
@@ -512,29 +663,66 @@ class CjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, Generic
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
     serializer_class = VpnRateServerSerializer
 
-    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnServerRatingSerializer})
+    def get_object(self):
+        """Get a single object by public_key."""
+        public_key = self.kwargs['public_key']
+        print(public_key)
+        return self.get_queryset().get(public_key=public_key)
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 200: VpnRateServerResponseSerializer})
     def get(self, request, public_key):
         """Comment here."""
         try:
-            vpn_server = self.get_queryset().get(public_key=public_key)
-        except CjdnsVpnServer.DoesNotExist:
+            vpn_server = self.get_object()
+        except UserCjdnsVpnServerRating.DoesNotExist:
             raise Http404
         server_rating_serializer = VpnServerRatingSerializer(vpn_server)
         return Response(server_rating_serializer.data)
 
-    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: VpnServerRatingSerializer})
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: VpnRateServerResponseSerializer})
     def post(self, request, public_key):
         """Comment here."""
-        print("posting!")
         user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
         try:
-            vpn_server = self.get_queryset().get(public_key=public_key)
+            vpn_server = self.get_object()
         except CjdnsVpnServer.DoesNotExist:
             raise Http404
-        serializer = self.get_serializer(data=request.data, user=user, cjdns_vpn_server=vpn_server)
+        data = request.data
+        data['cjdns_vpn_server'] = vpn_server.id
+        del data['public_key']
+        serializer = self.get_serializer(data=data, user=user)  # , cjdns_vpn_server=vpn_server)
         serializer.is_valid(raise_exception=True)
         serializer.create(serializer.validated_data)
-        server_rating_serializer = VpnServerRatingSerializer(vpn_server)
+        server_rating_serializer = VpnRateServerResponseSerializer(vpn_server)
+        return Response(server_rating_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class BulkCjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, ListBulkCreateAPIView):
+    """Rate a VPN Server."""
+
+    queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
+    serializer_class = VpnRateServerSerializer
+
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: VpnRateServerResponseSerializer})
+    def post(self, request):
+        """Comment here."""
+        user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
+        data = request.data
+        public_keys = []
+        for row in data:
+            public_keys.append(row['public_key'])
+        vpn_servers = self.get_queryset().filter(public_key__in=public_keys)
+        vpn_server_lookup = {}
+        for vpn_server in vpn_servers:
+            vpn_server_lookup[vpn_server.public_key] = vpn_server
+        for row in data:
+            row['cjdns_vpn_server'] = vpn_server_lookup[row['public_key']].id
+            del row['public_key']
+        serializer = self.get_serializer(data=data, user=user, many=True)
+        serializer.is_valid(raise_exception=True)
+        created_ratings = serializer.create(user, serializer.validated_data)
+        server_rating_serializer = VpnRateServerResponseSerializer(data=created_ratings, many=True)
+        server_rating_serializer.is_valid()
         return Response(server_rating_serializer.data, status=status.HTTP_201_CREATED)
 
 
