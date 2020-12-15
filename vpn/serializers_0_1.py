@@ -12,10 +12,6 @@ from .models import (
     UserCjdnsVpnServerFavorite,
 )
 import time
-from rest_framework_bulk import (
-    BulkListSerializer,
-    BulkSerializerMixin,
-)
 
 
 class TimestampField(serializers.Field):
@@ -54,7 +50,7 @@ class VpnClientEventListSerializer(serializers.ListSerializer):
         return events
 
 
-class VpnClientEventSerializer(BulkSerializerMixin, FriendlyErrorMessagesMixin, serializers.ModelSerializer):
+class VpnClientEventSerializer(FriendlyErrorMessagesMixin, serializers.ModelSerializer):
     """Serializer for the VpnClientEvent model."""
 
     class Meta:

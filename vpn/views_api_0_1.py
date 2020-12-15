@@ -47,10 +47,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 # from rest_framework_api_key.permissions import HasAPIKey
-from rest_framework_bulk import (
-    ListBulkCreateAPIView,
-    ListBulkCreateUpdateAPIView,
-)
 
 
 # from django.core.mail import send_mail
@@ -207,7 +203,7 @@ class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
         return Response(response)
 
 
-class BulkVpnClientEventRestApiModelViewSet(ListBulkCreateAPIView):
+class BulkVpnClientEventRestApiModelViewSet(GenericAPIView):
     """Bulk VPN Client Event."""
 
     serializer_class = VpnClientEventSerializer

@@ -11,6 +11,6 @@ djangorestframework-camel-case
 fastecdsa
 django-crispy-forms
 pycrypto
-djangorestframework-bulk
+# djangorestframework-bulk
 # pycryptodome
 cjdnsadmin
