@@ -693,7 +693,7 @@ class CjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, Generic
         return Response(server_rating_serializer.data, status=status.HTTP_201_CREATED)
 
 
-class BulkCjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, ListBulkCreateAPIView):
+class BulkCjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
     """Rate a VPN Server."""
 
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
@@ -705,7 +705,9 @@ class BulkCjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, Lis
         user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
         data = request.data
         public_keys = []
+        print(data)
         for row in data:
+            print(row)
             public_keys.append(row['public_key'])
         vpn_servers = self.get_queryset().filter(public_key__in=public_keys)
         vpn_server_lookup = {}
