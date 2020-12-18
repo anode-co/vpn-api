@@ -699,7 +699,7 @@ class BulkCjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
     queryset = CjdnsVpnServer.objects.filter(is_active=True, is_approved=True)
     serializer_class = VpnRateServerSerializer
 
-    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: VpnRateServerResponseSerializer})
+    @swagger_auto_schema(responses={404: 'Server public key not found', 401: 'Authorization denied', 201: GenericResponseSerializer})
     def post(self, request):
         """Comment here."""
         user = User.objects.filter(public_key=self.auth_verified_cjdns_public_key).first()
@@ -719,9 +719,13 @@ class BulkCjdnsVpnServerRateRestApiView(HttpCjdnsAuthorizationRequiredMixin, Gen
         serializer = self.get_serializer(data=data, user=user, many=True)
         serializer.is_valid(raise_exception=True)
         created_ratings = serializer.create(user, serializer.validated_data)
-        server_rating_serializer = VpnRateServerResponseSerializer(data=created_ratings, many=True)
-        server_rating_serializer.is_valid()
-        return Response(server_rating_serializer.data, status=status.HTTP_201_CREATED)
+        output = {
+            'status': 'success',
+            'detail': 'ratings saved'
+        }
+        response_serializer = GenericResponseSerializer(data=output)
+        response_serializer.is_valid()
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CjdnsVpnServerFavoriteRestApiView(HttpCjdnsAuthorizationRequiredMixin, GenericAPIView):
