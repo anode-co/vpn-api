@@ -14,3 +14,4 @@ pycrypto
 # djangorestframework-bulk
 # pycryptodome
 cjdnsadmin
+django-cron

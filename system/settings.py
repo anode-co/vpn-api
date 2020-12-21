@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'drf_yasg_examples',
     'crispy_forms',
+    'django_cron',
     'common',
     'vpn',
 ]
@@ -212,6 +213,11 @@ SWAGGER_SETTINGS = {
 SWAGGER_SETTINGS = {
     'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg_examples.SwaggerAutoSchema',
 }
+
+CRON_CLASSES = [
+    "vpn.cron.VerifyActiveVpnServersCron",
+    # ...
+]
 
 CORS_ORIGIN_ALLOW_ALL = True
 
