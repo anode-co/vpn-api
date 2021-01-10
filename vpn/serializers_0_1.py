@@ -22,6 +22,14 @@ class TimestampField(serializers.Field):
         return int(time.mktime(value.timetuple()))
 
 
+class IpAddressSerializer(serializers.Serializer):
+    """Serialize IP address info."""
+
+    ip_address = serializers.CharField()
+    max_prefix_length = serializers.IntegerField(allow_null=True)
+    version = serializers.IntegerField(allow_null=True)
+
+
 class VpnServerResponseSerializer(serializers.Serializer):
     """Serialize the VPN Server response."""
 

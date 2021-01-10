@@ -21,6 +21,7 @@ from .serializers_0_1 import (
     VpnServerRatingSerializer,
     VpnRateServerResponseSerializer,
     VpnFavoriteServerSerializer,
+    IpAddressSerializer,
 )
 from common.models import (
     User,
@@ -46,6 +47,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+import ipaddress
 # from rest_framework_api_key.permissions import HasAPIKey
 
 
@@ -70,6 +72,34 @@ def method_permission_classes(classes):
             return result
         return decorated_func
     return decorator
+
+
+class ClientIpAddress(CsrfExemptMixin, GenericAPIView):
+    """Respond with the client IP address."""
+
+    serializer_class = IpAddressSerializer
+
+    def get_client_ip(self, request):
+        """Get the client IP address."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+    def get(self, request):
+        """GET method."""
+        ip_address = self.get_client_ip(request)
+        ip_info = ipaddress.ip_network(ip_address)
+        output = {
+            'ip_address': ip_address,
+            'max_prefix_length': ip_info.max_prefixlen,
+            'version': ip_info.version
+        }
+        serializer = self.serializer_class(data=output)
+        serializer.is_valid()
+        return Response(serializer.data)
 
 
 class VpnClientEventRestApiModelViewSet(CsrfExemptMixin, ModelViewSet):
