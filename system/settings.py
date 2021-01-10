@@ -37,6 +37,8 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'vpn.anode.co',
     'h.vpn.anode.co',
+    'v6.vpn.anode.co',
+    'v4.vpn.anode.co',
     '45.77.111.157',
 ]
 
