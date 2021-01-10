@@ -190,7 +190,7 @@ class CjdnsVpnNetworkSettingsSerializer(serializers.ModelSerializer):
 class CjdnsVPNServerSerializer(serializers.ModelSerializer):
     """Serialize a CjdnsVpnServer."""
 
-    network_settings = CjdnsVpnNetworkSettingsSerializer()
+    # network_settings = CjdnsVpnNetworkSettingsSerializer()
     # peering_lines = CjdnsVpnServerPeeringLineSerializer(many=True)
     is_favorite = serializers.BooleanField(allow_null=True, required=False)
     last_seen_at = TimestampField()
@@ -201,25 +201,32 @@ class CjdnsVPNServerSerializer(serializers.ModelSerializer):
 
         model = CjdnsVpnServer
         fields = [
-            'name',
             'public_key',
-            'bandwidth_bps',
-            'region',
+            'name',
             'country_code',
-            'network_settings',
+            'average_rating',
+            'cost',
+            'load',
+            'quality',
+            'is_favorite',
+            # 'bandwidth_bps',
+            # 'region',
+            # 'network_settings',
             # 'peering_lines',
             'online_since_datetime',
             'last_seen_datetime',
-            'average_rating',
             'num_ratings',
-            'is_fake',
-            'is_favorite',
+            # 'is_fake',
             'created_at',
             'last_seen_at',
         ]
         example = {
-            'name': 'Kenny G',
             'public_key': 'lbqr0rzyc2tuysw3w8gfr95u68kujzlq7zht5hyf452u8yshr120',
+            'name': 'Kenny G',
+            'country_code': 'US',
+            'cost': 1.38,
+            'load': 52,
+            'quality': 2,
             'bandwidth_bps': 10485760,
             'online_since_datetime': "2017-07-21T17:32:28Z",
             'last_seen_datetime': "2017-07-21T17:32:28Z",

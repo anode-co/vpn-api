@@ -8,6 +8,7 @@ import requests
 # from django.utils import timezone
 from common.permissions import CjdnsMessageSigner
 from django.conf import settings
+from decimal import Decimal
 
 
 class VpnClientEvent(models.Model):
@@ -409,6 +410,10 @@ class CjdnsVpnServer(models.Model):
     is_fake = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(auto_now=True)
+
+    cost = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, default=None)
+    load = models.PositiveSmallIntegerField(default=52)
+    quality = models.PositiveSmallIntegerField(default=2)
 
     _network_settings = None
     is_favorite = None

@@ -39,7 +39,6 @@ class VerifyActiveVpnServersCron(CronJobBase):
             is_active = False
             if vpn_server.cjdns_public_ip:
                 url = self.build_verification_url(vpn_server)
-                print(url)
                 try:
                     response = requests.get(
                         url,
